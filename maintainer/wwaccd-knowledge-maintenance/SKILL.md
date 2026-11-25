@@ -1,6 +1,6 @@
 ---
-name: okww-knowledge-maintenance
-description: 仅供 okww-charcode-dev 仓库维护者显式调用的知识维护 Skill。用于审核案例证据和外部知识提议（GitHub Issue 或邮件附件），补充或修正角色语义卡、通用规则和游戏常识，批量确认条目并检查受影响的引用；拿到新版《鸣潮数据汇总》时重新生成帧数据。普通角色代码开发和实测迭代不调用。
+name: wwaccd-knowledge-maintenance
+description: 仅供 WWACCD（wuwa-auto-combat-code-dev）仓库维护者显式调用的知识维护 Skill。用于审核案例证据和外部知识提议（GitHub Issue 或邮件附件），补充或修正角色语义卡、通用规则和游戏常识，批量确认条目并检查受影响的引用；拿到新版《鸣潮数据汇总》时重新生成帧数据。普通角色代码开发和实测迭代不调用。
 disable-model-invocation: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: proposal
-description: okwwcharcode（ok-ww 角色代码开发）的知识提议阶段。用于实测迭代得到可入卡的新结论，或与现有语义卡冲突的已验证证据时。把本案证据整理成知识提议文件，脱敏后问用户一次是否反馈。同意后用 gh 创建 GitHub Issue、打开预填的新建 Issue 页面或改发邮件，交仓库维护者审核。适用于知识反馈、补卡提议、语义卡纠错、贡献知识。
+description: WWACCD（WWisnotOK 鸣潮队伍角色代码开发）的知识提议阶段。用于实测迭代得到可入卡的新结论，或与现有语义卡冲突的已验证证据时。把本案证据整理成知识提议文件，脱敏后问用户一次是否反馈。同意后用 gh 创建 GitHub Issue、打开预填的新建 Issue 页面或改发邮件，交仓库维护者审核。适用于知识反馈、补卡提议、语义卡纠错、贡献知识。
 ---
 
 # 知识提议
@@ -18,15 +18,15 @@ description: okwwcharcode（ok-ww 角色代码开发）的知识提议阶段。�
    - 候选必须满足入卡条件，并有可定位的证据。不满足的条目，在清单里写明不提议的原因。
 3. 没有候选时，说明原因并结束，不生成文件，不提问。
 4. 按 [提议模板](../../templates/knowledge-proposal.md) 逐条填写。原文照抄当前卡片，版本号取 [VERSION](../../VERSION)。
-5. 脱敏：本机路径改为 `<工作区>`、`<ok-ww>` 等占位，删除用户名、账号、邮箱和令牌。视频只写链接和时刻。
+5. 脱敏：本机路径改为 `<工作区>`、`<WWisnotOK>` 等占位，删除用户名、账号、邮箱和令牌。视频只写链接和时刻。
 6. 写入 `<工作区>/<队名>/proposals/<YYYYMMDD>-<短名>.md`，不得写入本 Skill 安装目录。
 7. 用 [submit_proposal.py](../../scripts/submit_proposal.py) 检查，未通过时按输出改正：
 
    ```text
-   <ok-ww python.exe> -I -B <本仓库>/scripts/submit_proposal.py <提议 .md> --dry-run
+   <WWisnotOK python.exe> -I -B <本仓库>/scripts/submit_proposal.py <提议 .md> --dry-run
    ```
 
-8. 给出提议全文，用宿主的结构化提问工具问一次。题干写明条数、反馈后公开在 GitHub Issue、同意按 MIT 许可收录。选项按第 7 步输出的 `gh:` 行和工作区根目录的 `okwwcharcode.local.md` 确定：
+8. 给出提议全文，用宿主的结构化提问工具问一次。题干写明条数、反馈后公开在 GitHub Issue、同意按 MIT 许可收录。选项按第 7 步输出的 `gh:` 行和工作区根目录的 `wwaccd.local.md` 确定：
    - `gh: 已登录`，或本地配置记有 `gh 引导：不再推荐`：选项为“反馈”“用邮件反馈”“不反馈”。
    - 其他情况：选项为“安装 gh 后反馈”“用浏览器反馈”“用邮件反馈”“不反馈”。`gh: 未登录` 时，第一项改为“登录 gh 后反馈”。题干加上下面这段；`gh: 未登录` 时删掉安装那句：
 
@@ -38,7 +38,7 @@ description: okwwcharcode（ok-ww 角色代码开发）的知识提议阶段。�
    - 用浏览器反馈：加 `--method browser` 运行。
    - 用邮件反馈：加 `--method email` 运行，告诉用户收件邮箱、邮件主题和附件路径。
    - 不反馈：保留文件，结束。
-   - 有安装或登录 gh 的选项，而用户选了浏览器或邮件反馈时，在 `okwwcharcode.local.md` 记一行 `gh 引导：不再推荐`。
+   - 有安装或登录 gh 的选项，而用户选了浏览器或邮件反馈时，在 `wwaccd.local.md` 记一行 `gh 引导：不再推荐`。
 
 ## 输出与通过条件
 

@@ -1,336 +1,93 @@
-# MCP 自动实测指引
+# WWisnotOK MCP 实测指引
 
-本指引让 Agent 通过 ok-ww MCP 自动完成一局实测：进场、开战、录像、取证和分析。
-测试脚本是本仓库 `templates/mcp/` 下的 Task 模板，用 MCP 的 `run_task` 提交。
-ok-ww 的 MCP 不需要额外安装脚本。
-已实测的场景只有终焉矩阵。其他场景按 §9 补模板。
+本指引让 Agent 通过 [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) 本机 MCP 服务执行代码核对、决策追踪、定向战斗探测或终焉矩阵实测，并用 `scripts/mcp_report.py` 汇总证据。
 
 ## 1 前提
 
 | 项 | 要求 |
 |---|---|
-| ok-ww | v3.7.14-beta.2 及以上，设置里已开启 MCP；带的 ok-script 版本见下文 |
-| 启动方式 | 必须经 `ok-ww.exe` 以管理员身份启动 |
-| 宿主 | 已配置 ok-ww MCP 连接，能调用 `run_task`、`get_run_status` |
-| 游戏 | 分辨率 16:9；矩阵已解锁；窗口不得最小化，见 §8 |
-| 导入入口 | 导入 zip 时必须有其中 1 种，见 §4.2 |
-| 编队 | 用户已把测试队伍编进矩阵的一个队伍，1 号位是开场角色 |
-| 本机路径 | 工作区 `okwwcharcode.local.md` 里的 `working` 目录和 Python |
+| WWisnotOK | 已安装或已构建（基线 `v0.4.7`），以 `WWisnotOK.exe --mcp`（或设置中开启 MCP）启动 |
+| 权限 | 游戏以管理员身份运行时，WWisnotOK 也必须以管理员身份运行 |
+| 宿主 | 已连接 WWisnotOK 本机 MCP（默认端口 `8766`，连接描述在 `%LOCALAPPDATA%\WWisnotOK\mcp\connection.json`，设了 `WWISNOTOK_DATA_DIR` 时在该目录的 `mcp\connection.json`） |
+| 游戏 | 简体中文、16:9 画面、分辨率不低于 1280×720，窗口不得最小化 |
+| 本机路径 | 工作区 `wwaccd.local.md` 记录 WWisnotOK 目录、数据目录与内置 Python（`runtime/python/python.exe`） |
 
-ok-ww 带的 ok-script 必须是 2.0.21 及以上，含以下两处修复：
+GUI 和 MCP 共用同一个执行权：自动战斗、测试（`run_task`）、日常任务（`start_routine`）和策略重载（`reload_strategies`）不能同时运行。
+客户端连接配置教程不在本指引范围内；WWisnotOK 官方接口细节以 `<WWisnotOK 目录>/docs/develop.md` 为准。
 
-- 82a37cc（PR #115）：取帧撞上录像补帧时最多等 0.1 秒。开启录像而缺少这处修复时，切人会多出约 1 秒。
-- PR #117：MCP 局照常写 `working/logs/ok-script.log`。缺少这处修复时，`mcp_report.py` 读不到日志。
+## 2 连接检查与内置指引
 
-正式版 v3.7.13 带 ok-script 2.0.20，缺 PR #117。v3.7.14-beta.2 带 2.0.22，已实测。
-v3.7.14-beta.3 起改用 ok-script 3.0.0b3，模板尚未实测。
+1. 调用 `get_capabilities()`，确认 `application` 为 `WWisnotOK`，记录应用版本和策略数量。
+2. 调用 `get_state()`，查看游戏采集连接、画面状态、当前队伍、执行权归属和前台状态。
+3. 调用 `get_skill(skill_id="develop")`，核对当前版本的 MCP 契约与测试脚本写法。
 
-非管理员实例在游戏未运行时不能启动游戏。
-这时 `run_task` 在 `preparing` 阶段失败，报 `Target device could not be started`。
-桌面快捷方式启动的实例没有管理员权限。
-遇到该错误时，必须请用户关闭 ok-ww，再右键 `ok-ww.exe` 以管理员身份运行。
+`screenshot()` 报错不表示 MCP 断开，连通性以 `get_capabilities()` 和 `get_state()` 为准。
 
-连接配置教程不在本指引范围内。
+## 3 导入代码与热重载
 
-## 2 连接检查与内置技能
+WWisnotOK 每支队伍支持内置代码（槽位 0）和 6 个导入位（槽位 1–6，位于 `<数据目录>/teams/<TeamKey>/imports/1..6/`）。
 
-1. 调用 `list_skills()`。能返回技能列表，说明 MCP 已连通。
-2. 调用 `get_skill(skill_id="develop")`，读 Task 契约与框架用法。技能 ID 以 `list_skills()` 的返回为准。
-3. 修改 ok-ww 已注册任务的源码后，按 `reload-tasks` 技能重载。本指引的模板是独立文件，不必重载。
+当前边界：`McpHost` 尚未提供独立的 `import_team` MCP 工具。
 
-`screenshot()` 报错不表示 MCP 断开。游戏未运行时 `screenshot()` 也会报错。
-连通性必须用 `list_skills()` 判断。
+- **首次导入新 zip**：请用户在 WWisnotOK 的“队伍代码”页签点击导入并切换到对应导入位。
+- **修改已导入队伍的 `.py` 后复测**：在确认无任务占用执行权后调用 `reload_strategies()` 热重载；若有语法或导入错误，引擎会保留旧类并返回报错。
+- **核对代码生效**：每次 `run_task` 写入 `runs/<run_id>/strategy-versions.json`，每次决策追踪写入 `decision-traces/<时间-编号>/metadata.json`（含 `provenance.imported_strategies` 的 SHA-256）。核对其中对应 `<类名>.py` 的哈希前 16 位与本次候选包一致，不相等说明新代码未生效。
 
-执行器同一时间只运行一个任务。
-提交下一个任务前，必须等上一个任务进入 `succeeded`、`failed` 或 `cancelled`。
-`stopping` 状态仍占用执行器。
+## 4 实测与采证方式
 
-## 3 模板与配置
+按测试目标选用以下三种方式之一；执行前按需把 `templates/mcp/` 副本放到 `<工作区>/<队名>/media/mcp/`：
 
-使用前把 `templates/mcp/` 下的 5 个文件复制到 `<工作区>/<队名>/media/mcp/`，再改 `mcp_test.json`。
-`run_task` 必须传该副本的绝对路径。
-模板按自身所在目录读取 `mcp_test.json`。
-
-| 模板 | 起点 | 终点 | 产物 | 消耗 |
-|---|---|---|---|---|
-| `preflight.py` | 登录页、公告、菜单、矩阵区域 | 大世界 | `steps.json`、各步截图 | 无 |
-| `team_import.py` | 任意 | 不变 | `import.json`、旧队伍目录备份 | 覆盖已装的队伍代码 |
-| `matrix_nav.py` | 大世界、指南、矩阵各页、结算页 | 测试队伍的编队详情页 | `target.json`（模板目录）、`nav.json`、各步截图 | 无 |
-| `matrix_run.py` | 测试队伍的编队详情页 | 矩阵结算页 | `summary.json`、`steps.json`、节点截图；开启录像时另有 `record.mp4` | 每局 1 点结晶单质（“前往”旁的 ⚡1） |
-
-分析脚本是 `scripts/mcp_report.py`，用 ok-ww 的 Python 运行，见 §6。
-
-### 3.1 参数来源
-
-队伍和开场角色取自 team.json，不在 `mcp_test.json` 里重复填写：
-
-| 参数 | 来源 |
-|---|---|
-| 队伍 | 填了 `zip` 时取包内 team.json；否则按 `team` 读已装队伍的 team.json |
-| 开场角色 | team.json `description` 里的“一号位<中文名>”，如“一号位坎特蕾拉” |
-| 矩阵模式 | `mcp_test.json` 的 `mode`；team.json 没有该字段 |
-| 队伍槽位 | `matrix_nav.py` 在矩阵里按成员查找，不需要填写 |
-
-中文名按 ok-ww 的 `i18n/zh_CN/LC_MESSAGES/ok.po` 对应到类名。
-`description` 没写“一号位”时，必须问用户一次开场角色，填进 `opener`。
-`matrix_nav.py` 找到队伍后，把槽位、队伍和开场角色写进模板目录的 `target.json`。
-`matrix_run.py` 只读 `target.json`，不读 `team` 和 `opener`。
-
-`mcp_test.json` 字段：
-
-| 字段 | 含义 | 用于 |
-|---|---|---|
-| `zip` | 待导入工坊 zip 的绝对路径；测已装代码时留空 | `team_import.py`、`matrix_nav.py` |
-| `team` | 3 个角色类名；`zip` 为空时必填，否则可留空 | `team_import.py`、`matrix_nav.py` |
-| `opener` | 开场角色类名；只在 `description` 没写“一号位”时填 | `matrix_nav.py` |
-| `mode` | `奇点扩张` 或 `稳态协议`，默认 `奇点扩张` | `matrix_nav.py` |
-| `save_result` | 是否保存本局成绩，默认 `false` | `matrix_nav.py` |
-| `switch_delay` | 按 F 后到按开场角色槽位键的秒数 | `matrix_run.py` |
-| `walk_time_out` | 走向回音之钥的上限秒数 | `matrix_run.py` |
-| `fight_cap` | 从任务开始算的战斗上限秒数 | `matrix_run.py` |
-| `end_out_of_team` | 队伍 HUD 连续消失多少秒判为结算 | `matrix_run.py` |
-| `record` | `enabled` 是否录像，默认 `true`；`fps`、`size` 是录像帧率与尺寸 | `matrix_run.py` |
-
-`switch_delay` 0.15 秒来自今弗坎队的实测。其他队伍必须先按录屏核对。
-
-### 3.2 录像开关
-
-以下情况可把 `record.enabled` 设为 `false`：
-
-- 只测稳定性；
-- 本局只比较日志里的耗时、判定和问题行条数。
-
-以下情况必须开启录像：
-
-- 排查问题；
-- 要交给用户查看的局。
-
-原因：问题可能只在某一局出现。不录像就看不到当时的画面，重跑也不一定复现。
-关闭录像后，`summary.json` 没有 `recorder`，报告没有录像秒数和拼图。
-
-## 4 一局测试流程
-
-每一步都用 `run_task(<副本绝对路径>)` 提交，再等终态。
-`get_run_status(run_id)` 和运行目录下的 `status.json` 都能读到状态。
-运行目录是返回值里的 `artifact_directory`，位于 `<working>/logs/mcp/<run_id>/`。
-
-1. 首局或游戏状态不明时，运行 `preflight.py`。
-2. 待测代码与已装代码不同时，运行 `team_import.py`。
-3. 运行 `matrix_nav.py`，找到测试队伍，停在该队伍的编队详情页。
-4. 运行 `matrix_run.py`。一局约 220 秒，宜后台等待终态。
-5. 运行 `python -I -B scripts/mcp_report.py <运行目录> --frames`。
-6. 按 §6 判读结果。
-7. 下一局从第 2 步开始。`matrix_nav.py` 会从结算页取消保存并回到详情页。
-
-各模板的 `verify_start_state()` 不通过时，任务不会执行任何操作，也不消耗结晶单质。
-`matrix_run.py` 失败时，先看 `steps.json` 的最后一个节点，再决定重跑哪一步。
-
-### 4.1 前置：preflight.py
-
-- 游戏未运行时，`run_task` 的准备阶段会先启动游戏。
-- 登录、公告、月卡和“开始游戏”由 `AutoLoginTask.wait_login()` 逐帧推进。
-- 已登录但停在菜单时，按 ESC 返回，最多 5 次。
-- 加载画面只等待，不按 ESC。
-- 从矩阵区域 ESC 到底会弹“是否确认返回大世界”，模板点“确认”。
-
-### 4.2 导入：team_import.py
-
-1. 确认 ok-ww 有导入入口。
-2. `team` 不为空时，校验 zip 里的队伍与 `team` 一致。
-3. 把已装的队伍目录复制到运行目录的 `backup_<队名>/`。
-4. 调用 `CustomCharLoader.import_custom_team()` 导入。
-5. 按文本读回，核对每个角色文件与 zip 一致，`code_mode` 为 `import`。
-
-导入入口有 2 种。模板依次检查，并把结果写进 `import.json` 的 `entry`：
-
-| ok-ww 版本 | 入口 | `entry` | 判定依据 |
+| 模板 / 接口 | 用途 | 是否发送输入 | 主要产物 |
 |---|---|---|---|
-| v3.7.14 及以前 | 宿主注册的“角色代码”页签 | `host` | `config.py` 的 `custom_tabs` 含 `CharacterCodeTab` |
-| v3.7.15 起 | 插件提供的“角色代码”页签 | `plugin` | `ok_import/<插件>/manifest.json` 的 `custom_tabs` 含 `CharacterCodeTab` |
+| `templates/mcp/capture_probe.py`（经 `run_task`） | 只读检查画面分辨率、`in_team()` 和当前加载的角色类 | 否 | `runs/<run_id>/run.log`、`result.json`、`strategy-versions.json`、`last-frame.png` |
+| `templates/mcp/combat_probe.py`（经 `run_task`） | 用户在游戏内备好战斗场景，跑限定时长（默认 30 秒）的策略循环 | 是 | 同上；配合 `set_decision_tracing` 产出 `events.jsonl` 与关键帧 PNG |
+| `start_routine("matrix", config)` | 调用 WWisnotOK 内置终焉矩阵例程（支持 `RunMode: "Push"` 奇点扩张凹分） | 是 | 例程日志、进度与决策追踪目录 |
 
-2 种入口都没有时，模板报 `no import entry`，不导入。处理见 §8。
+### 标准采证流程
 
-说明：v3.7.15 起，上游只删了 `config.py` 的页签注册。`src/char/CustomCharLoader.py` 和 `src/gui/CharacterCodeTab.py` 还在。模板直接调用 `CustomCharLoader`，不操作页面。
+1. 调用 `get_state()` 确认无占用，可选跑一次 `capture_probe.py` 确认画面和队伍识别正常。
+2. 调用 `set_decision_tracing(enabled=true, capture_frames=true)` 开启决策追踪。
+   - 追踪会异步写入 `<数据目录>/decision-traces/<时间-编号>/`（最多 50,000 条事件、64 张关键帧 PNG，不阻塞战斗）。
+   - 记录返回的 `folder` / `trace_id`。
+3. 运行目标测试：
+   - **定向战斗测试**：由用户备好战斗场景后，用 `run_task(file_path=<combat_probe.py 绝对路径>, timeout_seconds=90, team=[...])` 启动，轮询 `get_run_status(run_id)` 至终态，再用 `get_run_artifacts(run_id)` 取产物路径。
+   - **已有自动战斗观察**：用 `set_automation_enabled(enabled=true)` 开启后，可用 `get_state()`、`get_logs()`、`get_decision_trace()` 增量观察，结束后关闭。
+   - **终焉矩阵测试**：向用户确认 `matrix_routine` 参数（槽位、预设、增益、目标与是否保留成绩）后，调用 `start_routine(task="matrix", config=...)`，轮询 `routine_status()` 至结束。
+4. 调用 `set_decision_tracing(enabled=false)` 结束记录并等待后台落盘完成。
+5. 运行报告脚本汇总并归档到工作区媒体目录：
 
-队伍目录旁已有 `<队名>.backup` 时，模板停止导入。
-原因：该目录说明上次导入中断，加载器导入时会删除该目录。
+```text
+<WWisnotOK python.exe> -I -B scripts/mcp_report.py [<runs/<run_id> 目录>] [--trace <decision-traces/<编号> 目录>] [--out <工作区>/<队名>/media/mcp_reports/<编号>]
+```
 
-`team_import.py` 只能导入本轮生成的版本，或用户指定的 zip。
-已装代码含用户未打包的修改时，必须先问用户。
+说明：若团队使用带变轴/末轮的循环前缀（如 `S,C,Z`），追加 `--loop-prefixes S,C,Z`。
 
-### 4.3 开战：matrix_run.py
+## 5 结果判读
 
-1. 点“前往”，等加载完成、队伍 HUD 出现。
-2. 清空旧角色对象，调用 `load_chars()` 重新识别，记录 3 个类、源码路径和 sha256。
-3. 队伍与 `target.json` 不符时停止，不开战。
-4. 向前走到出现 F 提示，按 F 交互回音之钥。
-5. 在场角色不是开场角色时，等 `switch_delay` 秒，按开场角色的槽位键。
-   进入大厅时在场的不一定是 1 号位，这一步不能省。
-6. 调用 `wait_combat(target=True)` 进入战斗并锁定目标。
-7. 循环调用 `AutoCombatTask.run()`，直到队伍 HUD 消失超过 `end_out_of_team` 秒。
-8. 在结算页读队伍得分，不点任何按钮。
+`scripts/mcp_report.py` 输出 `report.md`、`events.json`（及归档的 `run.log`），按以下顺序判读：
 
-MCP 运行期间，ok-ww 的触发任务暂停。
-因此第 7 步必须显式调用自动战斗。
+1. **运行状态**：`status.json` 的 `State == "succeeded"` 仅说明测试任务未抛异常，不代表战斗轴通过。
+2. **代码版本**：核对 `imported_sha256_16` 与本次交付 zip 内 `.py` 的 SHA-256 前 16 位是否一致。
+3. **证据完整性**：检查 `decision_trace.summary` 的 `dropped_disk_events` 和 `skipped_frames`；若事件有丢弃，必须标明该次决策证据不完整。
+4. **问题行与切人核对**：
+   - 先看 `report.md` 的“问题行”（`fail`、`fallback`、`interrupt`、`WARN`/`ERROR`、`no_candidate_above_no_priority`）；
+   - 再对照“切人决策摘要”（`switch_selected` 的 `target_index`、`has_intro`、`reason`）与“长耗时动作”（`action_ended >= 1500 ms`）；
+   - 结合 `decision-traces` 保存的关键帧 PNG 定位首处偏离。
+5. **录像与计时边界**：WWisnotOK 当前未内置全程实时 MP4 录像。需要逐节点视频耗时验收（`iterate.md §3`）时，必须同步录制外部视频（如 OBS），再按相同起止事件做视频对比；缺少整局录屏时必须写明“耗时未验证”。
 
-`AutoCombatTask` 的“战斗前后切治疗”配置会调用 `switch_healer()`。
-开场角色不是治疗时，必须用 `steps.json` 的 `switched` 节点和录像核对实际首位。
-
-## 5 矩阵页面与安全规则
-
-`matrix_nav.py` 每步取新帧，按全屏 OCR 判定页面，最多 40 步，未知页面最多按 3 次 ESC。
-
-| 页面 | 判定文字 | 动作 |
-|---|---|---|
-| 大世界 | 队伍 HUD 可见 | 按指南键（默认 F2） |
-| 指南 | 刚按指南键或刚切分页，左上有标题 | 依次点左侧分页图标，找“周期挑战” |
-| 周期挑战 | 左上标题“周期挑战” | 点“终焉矩阵”，再点所选模式下方的“前往” |
-| 赛季页 | “周期规则”，右侧有模式卡片 | 点所选模式的卡片 |
-| 矩阵主页 | 左上“终焉矩阵”，有“当前累计积分” | 读各队记录，选下一个未查的队伍，点“重新挑战”或“开始挑战” |
-| 提示 | “提示”“重新挑战并保存” | 点“确认” |
-| 编队详情页 | 左上“终焉矩阵”，有“角色编队” | 读成员；相符则写 `target.json` 后结束，否则按 ESC |
-| 结算页 | “队伍得分”“战绩详情” | 点“返回” |
-| 成绩确认 | “成绩确认”“是否覆盖” | `save_result` 为 false 时点“取消” |
-
-从编队详情页按 ESC，可能回到矩阵主页，也可能回到赛季页。
-
-### 5.1 找测试队伍
-
-`matrix_nav.py` 只读编队，不改编队：
-
-1. 在矩阵主页按 01、02…的顺序打开队伍，范围是有记录的队伍和其后第一个空位。
-2. 在编队详情页点 1 号位头像，打开编队编辑器。编辑器右上显示 1 号位的名字。
-3. 点带角标“2”“3”的格子，读出 2、3 号位的名字。
-4. 按 ESC 关闭编辑器，回到编队详情页。
-5. 1 号位是开场角色、3 人与队伍一致时，写 `target.json` 并结束。否则按 ESC 查下一队。
-
-编辑器规则（2026-10-28 实测）：
-
-- 点带角标的格子会显示名字，同时把该角色移出编队。
-- 不点“确定”就按 ESC，编辑器里的改动全部丢弃，编队保持原样。
-- 点详情页的 2、3 号头像打开编辑器，右上仍显示 1 号位。
-- 矩阵限制角色重复编队，但有些角色可以编进两支队伍。实测时 01、02 号队都有莫宁。所以模板核对 3 人，不只看 1 号位。
-
-所有队伍都不相符时，任务失败，不消耗结晶单质。
-这时必须请用户在矩阵里编好测试队伍，1 号位放开场角色。
-模板不得点编辑器的“确定”，不得替用户改编队。
-
-安全规则：
-
-- 进入“重新挑战”不改记录。只有结算后保存成绩，才会覆盖本队记录并清空其后所有队伍的记录。
-- `save_result` 为 true 时，测试队伍必须是最后一个有记录的队伍，否则任务失败。
-- 结算页的“当前总积分”只是预览。点“返回”后弹“成绩确认”，点“取消”保留原记录。
-- `save_result` 必须保持 `false`，用户要求保存成绩时除外。
-- 每次 `matrix_run.py` 点“前往”消耗 1 点结晶单质。运行局数按 [iterate.md §4.1](../guides/iterate.md#41-自主迭代上限) 的上限计算。
-
-OCR 识别要点：
-
-- 模式标题可能把“扩”读成“护”，前面还可能多出图标杂字（如“风奇点护张”）。模板只判断是否包含前 2 个字。
-- 编队编辑器右上的角色名位于 (0.38, 0.11)–(0.65, 0.16)。角标“2”“3”在格子右上角，格子中心在角标左下 (−0.033, +0.069)。
-- 编队详情页的槽位编号全屏 OCR 读不出。模板裁剪 (0.44, 0.64)–(0.56, 0.76) 后能读出“(04)”。
-- 矩阵主页的队伍记录行读作 `+8488`，位于右侧 x > 0.85。行 01 的 y 为 0.27，行距 0.107。
-- 截图里的“特征码”属于账号信息。模板写入的文字已过滤，截图不得公开。
-
-## 6 结果判读
-
-`mcp_report.py` 读 `<working>/logs/ok-script.log` 中本次运行时段的行。
-该日志有毫秒时间戳，不含控制台噪声。
-运行目录里的 `run.log` 每行业务日志后都跟 2 段 `--- Logging error ---` 回溯，是 pythonw 没有控制台导致的，宜不读。
-
-脚本输出 `report/report.md`、`report/events.json`、`report/run.log`，`--frames` 另输出 `report/frames/`。
-`report.md` 包括：
-
-- 运行状态、队伍、版本、各角色代码 sha256 前 16 位、队伍得分；
-- 每个角色每种技能的 `ok` / `fail` 次数；
-- 问题行：`fail`、`fallback`、`interrupt`、warning 及以上级别、脱战；
-- 开启录像时，每个问题行的录像秒数与 4 帧拼图；
-- 启动轴耗时和各循环轮墙钟耗时。
-
-判读顺序：
-
-1. `status.json` 为 `succeeded` 只说明任务没有报错，不等于战斗通过。
-2. `steps.json` 必须依次有 `click_go`、`lobby`、`f_found`、`switched` 或 `f_pressed`、`lock`、`fight1_start`、`fight1_end`、`end`。
-3. `summary.json` 的 `team` 必须与 `target.json` 一致。
-4. `summary.json` 的 `code[].sha256_16` 必须等于 `import.json` 中 `new.files` 的 `<类名>.py`。不相等说明新代码没有生效，见 §7。
-5. 逐条查看问题行的拼图，区分代码判据错误和游戏状态。
-6. 队伍得分只能辅助比较，不能替代动作和耗时检查。
-   `summary.json` 的 `result_texts` 含挑战进度，如“第1轮（5/5）”，可比较打到第几轮。
-
-录像是实时的：视频秒数 = 日志时刻 − `summary.json` 的 `recorder.video_start`。
-任务长时间不取帧时，录像模板向采集后端补帧；后端忙时用上一帧补齐。
-补帧时任务取帧要等锁。框架没有 82a37cc 时，撞上补帧的 `next_frame` 会停 1 s，切人随之多出约 1 s。
-`recorder.gaps_over_0_5s` 列出采集空档；问题行落在空档里时，报告标“旧帧”。
-2560×1440 下 1 局录像约 220 MB。录像只存运行目录，不得提交到本仓库。
-
-## 7 代码怎样生效
-
-- `team_import.py` 导入后，加载器清空该队的类缓存。
-- `matrix_run.py` 清空旧角色对象后重新识别，下一局即加载新代码，不必重启 ok-ww。
-- 加载器按文件修改时间缓存类。模块名末尾的数字是文件的 `mtime_ns`，可用于核对。
-- `reload_tasks()` 不刷新角色代码。
-- 改了 ok-ww 内置的 `src/char/` 文件时，必须重启 ok-ww。
-
-重启步骤：调用 `exit_process`，等返回的 PID 退出，再请用户以管理员身份启动 `ok-ww.exe`。
-重启需要用户操作，Agent 必须停下说明，不得自行用非管理员方式拉起。
-
-shell 读 `working/configs/custom_teams/` 会被拒绝访问。
-需要读已装文件时，看 `team_import.py` 的备份目录，或在 Task 里复制到运行目录。
-
-## 8 故障与处理
+## 6 故障与处理
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `preparing` 阶段报 `Target device could not be started` | ok-ww 不是管理员实例，游戏未运行 | 请用户以管理员身份重启 ok-ww |
-| `preparing` 卡约 120 秒，日志刷 `capture_by_bitblt invalid params: hwnd=0` | 游戏窗口最小化，ok-ww 判为未连接，走启动游戏分支 | 恢复窗口后重跑。`stop_task` 要等 `start_timeout` 到时才结束 |
-| `verify_start_state` 失败 | 起点页面不对 | 先运行 `matrix_nav.py` 或 `preflight.py` |
-| `no import entry` | 宿主没有注册“角色代码”页签，也没有提供该页签的插件；或 `CustomCharLoader` 不存在 | 停止，不得绕过。提示用户在插件页选择“从 ZIP 添加”，安装 `character_code_tab` 并重启 ok-ww，或换用 v3.7.14 及以前的版本。本指引不收录该 zip 的下载地址。 |
-| `opener unknown` | team.json 没写“一号位”，`opener` 也为空 | 问用户一次开场角色，填进 `opener` |
-| `no slot has team` | 矩阵里没有成员相符的队伍 | 停止；请用户编好队伍，1 号位放开场角色 |
-| `save_result needs slot` | 要保存成绩，但测试队伍之后还有记录 | 停止，问用户改测哪一队 |
-| `team mismatch` | 大厅识别的队伍与 `target.json` 不符 | 停止，不开战；请用户确认编队 |
-| `lock-on failed` | F 交互或进入战斗失败 | 看 `f_found`、`lock` 截图后再重跑 |
-| `fight cap reached` | 战斗超过 `fight_cap` | 看录像末段，确认是否卡住 |
-| 代码 sha 与导入不符 | 加载失败退回内置类，或缓存未清 | 查 `report/run.log` 的加载错误 |
+| `connection.json` 不存在或连不上 `127.0.0.1:8766` | WWisnotOK 未开启 MCP 或已重启换了端口/令牌 | 启动 `WWisnotOK.exe --mcp` 并重新读取 `connection.json` |
+| 工具报执行权被占用 | 自动战斗、例程或上一个 `run_task` 尚未结束 | 先 `stop_task` / `stop_routine` / `set_automation_enabled(false)`，等状态归闲 |
+| `reload_strategies` 失败 | 导入的 `.py` 存在语法、导入或继承错误 | 按返回的错误信息修正，先跑 `scripts/pack_team.py` 校验再重载 |
+| 画面采集失败或 `frame.json` 为 `unavailable` | 游戏窗口最小化，或 WWisnotOK 权限低于管理员运行的游戏 | 恢复游戏窗口；以管理员身份重启 WWisnotOK |
+| 导入哈希与候选 zip 不一致 | 未在 WWisnotOK 切换到新导入位，或未调用 `reload_strategies` | 在“队伍代码”页确认激活槽位并重载 |
 
 同一步骤连续失败 2 次时，必须停止并向用户报告，不得换方法反复重试。
 
-## 9 扩展到其他场景
+## 7 验证状态
 
-新场景宜照 `matrix_nav.py` 写导航模板：
-
-- 每步取新帧，用标题位置和关键字判定页面；
-- 每个页面只做一个动作，步数和 ESC 次数有上限；
-- 每步截图，写 `nav.json`；
-- 会改记录的弹窗默认选不保存。
-
-新场景的开战和战斗宜复用 `matrix_run.py` 的 `Recorder`、`_mark`、`_code_info` 和战斗循环。
-新模板在本机实测通过前，不得写成已验证。
-
-## 10 验证记录
-
-2026-10-28，ok-ww v3.7.12，游戏 2560×1440，今弗坎队 2.0.6.3：
-
-| 项 | 结果 |
-|---|---|
-| `preflight.py` | 从矩阵编队详情页回到大世界，用时 11 秒 |
-| `matrix_nav.py` | 从大世界到编队详情页 7 步；从结算页取消保存回到详情页，原记录 8488 保留 |
-| `team_import.py` | 导入同版 zip，读回一致，旧目录已备份 |
-| `matrix_run.py` | 连续 3 局都从详情页打到结算页，得分 7941、7467、5073 |
-| 代码生效 | 第 3 局 3 个角色的 sha256 与 `import.json` 一致，模块名带导入后的 `mtime_ns` |
-| 记录保护 | 3 局都点“取消”，总积分 27209 和队伍 4 的 8488 未变 |
-| 录像 | 第 3 局 `written` 为 3062，mp4 实有 2479 帧，补取的 BGRA 帧被丢弃；修正后 2.0.6.4 一局 mp4 3166 帧，等于 `written` |
-| 发现的问题 | 第 3 局第 2–4 轮今汐 E 链连续失败，第 1、2 局没有；同一代码版本 |
-| 找队 | `matrix_nav.py` 从矩阵主页依次读 01–04 号队，在 04 号队读到坎特蕾拉、弗洛洛、今汐，写出 `target.json`，未消耗结晶单质 |
-| 编队只读 | 读完成员按 ESC 后，04 号队编队不变（截图核对） |
-| 第 4 局 | 按 `target.json` 开战；大厅在场为今汐，切到坎特蕾拉成功，得分 4557 |
-| 结算后回详情页 | 取消保存后回到 04 号详情页，读回成员相符；总积分 27209 和 8488 未变 |
-
-2026-10-29 至 11-02，今弗坎队 2.0.6.10–2.0.6.14，`matrix_run.py` 为 01f0eff 版：
-
-| 环境 | 结果 |
-|---|---|
-| ok-ww 3.7.12，本机补 82a37cc，5 局 | 不含重新锁敌的切人都短于 0.9 秒；mp4 帧数等于 `written` |
-| ok-ww 3.7.13 官方版，5 局 | 结果同上；MCP 局 `ok-script.log` 停写，报告只能读秒级的 `run.log` |
-| ok-ww 3.7.14-beta.2，20 局 | `ok-script.log` 持续写入毫秒行，PR #117 生效 |
-
-`record.enabled` 为 `false` 的分支只做了离线检查，尚未实机运行。
+- 本指引与 `templates/mcp/`、`scripts/mcp_report.py` 已按 WWisnotOK `v0.4.7` 源码接口核对并完成离线模拟验证。
+- 实机端到端回归（`capture_probe.py`、`combat_probe.py`、`start_routine("matrix")` + `set_decision_tracing`）尚未在本版完成真机记录，首次真机实测后在此补记验证结果。

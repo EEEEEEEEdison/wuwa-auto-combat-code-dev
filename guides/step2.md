@@ -110,7 +110,7 @@ self._force_switch_to(self._find_teammate('<下一个类名>'), '<下个节点�
 适用项必须通过后才能交付。
 局部任务不适用的项目，记录原因。
 
-- [ ] 只编译本次角色文件：`python -I -B -m py_compile <文件>`。
+- [ ] 只做本次角色文件的内存语法检查：`python -I -B -c "import ast, sys; [ast.parse(open(p, encoding='utf-8-sig').read(), p) for p in sys.argv[1:]]" <文件...>`（不落盘 `__pycache__`）。
 - [ ] 交场链正常通过，变异时确实失败，最终候选再次通过。
 - [ ] `self.X()`、`self.task.X()` 均能在源码或本文件定义中定位。
 - [ ] 每个动作的触发、完成和切人处理与模型一致。
@@ -132,14 +132,13 @@ self._force_switch_to(self._find_teammate('<下一个类名>'), '<下个节点�
 2. 在新的 `<队名>/skilltest-v<N>/` 放置 3 个角色文件、`verify_chain.py` 和 `team.json`。
 3. 写 README，列出交场链、轴与视频节点对应、参考耗时入口、试验假设和未实测项。
 4. 写 `notes.md`，记录来源、实现选择及实际检查结果。
-5. 用配置的 Python 执行 `scripts/pack_team.py <版本目录> <ok-ww运行目录>`。
+5. 用配置的 Python 执行 `scripts/pack_team.py <版本目录> <WWisnotOK 目录>`。
 6. 核对 zip 与声明的打包源逐字节一致。
 7. 交付 zip 路径、检查结果及待实测项，进入 [iterate.md](iterate.md)。
 
 `team.json.team` 用逗号分隔的英文显示名，按不区分大小写的字母序排列。
-显示名以运行目录 `CustomCharLoader.py` 的 `CHARACTER_DISPLAY_NAMES` 为准。
+角色表与显示名以 `<WWisnotOK 目录>/assets/characters.json` 和 `Core/Contracts.cs` 的 `Names.Aliases` 为准（漂泊者类名为 `Rover`）。
 `description` 必须写“一号位<中文名>”标明开场角色，如“一号位坎特蕾拉”。
-MCP 实测按这句确定开场角色，见 [mcp-testing.md §3.1](../references/mcp-testing.md#31-参数来源)。
 
 项目要求清洗时，先生成清洗后的 3 个 `.py`。
 使用 `--src <清洗结果目录>`，并把该目录记为实际打包源。
@@ -147,7 +146,7 @@ MCP 实测按这句确定开场角色，见 [mcp-testing.md §3.1](../references
 
 zip 平铺 `team.json` 和 3 个角色文件。
 文件名为 `<类名>_<类名>_<类名>_<author>_<version>.zip`。
-`inspect_team_archive` 输出 `OK` 才通过。
+`pack_team.py` 调用 WWisnotOK `strategy_host/validate.py` 输出 `OK` 才通过。
 `REFUSE` 表示同名包已存在，必须使用新版本号。
 `FAIL` 时按报错修正，再运行同一打包脚本。
 不得另写打包脚本。

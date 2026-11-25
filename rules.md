@@ -1,40 +1,40 @@
 # 代码规则
 
-okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文件。入口见 [SKILL.md](SKILL.md)。
+WWACCD（wuwa-auto-combat-code-dev）Skill 的代码规则。代码实现和实测修改都依照本文件。入口见 [SKILL.md](SKILL.md)。
 
 ## 这是什么
 
-教 AI 写 ok-ww 的角色代码（`BaseChar` 子类）：
+教 AI 写 WWisnotOK 的队伍角色代码（`BaseChar` 子类）：
 
 1. 宜调用框架现成函数，并在相近函数之间选对（`click_*` vs `send_*_key`、`is_con_full` vs `get_current_con`……）。
 2. 没有现成函数时，按项目已有经验自实现（时间推算或画面识别）。
 3. 日志统一用英文模板，规定何时打、打什么。
-4. 工坊脚本化配队使用统一的循环轴骨架。
+4. 脚本化配队使用统一的循环轴骨架。
 
-日常工作流：用户给游戏日志和录像，AI 定位出招或切人问题后修改代码（见“迭代工作流”）。
+日常工作流：用户给日志、决策追踪和录像，AI 定位出招或切人问题后修改代码（见“迭代工作流”）。
 
 ## 基线
 
-- 上游 `ok-oldking/ok-wuthering-waves` master `2243d465`（2026-10-05），引用写作 `src/char/BaseChar.py:369`。
-- 框架 ok-script `v2.0.8`，引用写作 `ok/task/task.py:508`。
-- **0-1 源码为准**：本规则或 references 的条目与源码不一致时，以源码为准，并在本案工作区记录差异和来源。知识使用边界见 [语义卡说明](knowledge/cards/README.md#使用边界)。
+- [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`），通用采集、匹配、OCR、冷却、协奏与切人调度由 C# 引擎执行（`src/WWisnotOK/Core/`）。
+- Python 运行时：WWisnotOK 内置 `runtime/python/python.exe`（Python 3.12，已含 `cv2`）。
+- **0-1 源码为准**：本规则或 references 的条目与当前 WWisnotOK 源码不一致时，以源码为准，并在本案工作区记录差异和来源。知识使用边界见 [语义卡说明](knowledge/cards/README.md#使用边界)。
 
-## 两种模式（按文件位置判定）
+## 两种写法（按是否固定交场链判定）
 
-| 模式 | 判定 | 规则 |
+| 写法 | 适用场景 | 规则 |
 |---|---|---|
-| 内置模式 | 改 `src/char/*.py`（包括只部署到本地运行目录的改动） | 造新轮子要谨慎：任何新 helper、状态机、循环，先和用户讨论——说明内置函数为什么不行、影响范围、怎么回滚。改 `BaseChar`/`BaseCombatTask` 本身是单独的讨论项。 |
-| 工坊模式 | 工坊配队 zip（`team.json` + 3 个角色 `.py`） | 自由度高，本规则只用来加快开发；交付说明里标出哪些是自实现的部分。 |
+| 普通队伍代码 | 无固定交场链，靠 `do_perform` + `get_switch_priority` 调度 | 遵守第 1–5 组规则与通用层日志；交付说明标出自实现部分。 |
+| 循环轴队伍代码 | 工坊配队 zip（`team.json` + 3 个角色 `.py`），每个节点指定下一位与动作体 | 额外遵守第 6 组循环轴骨架与节点 `[TAG]` 日志；每次打包前跑 `verify_chain.py`。 |
 
-提交、测试、部署等开发纪律以项目自己的 AGENTS.md / spec 为准（项目规则优先）。
+提交、测试、部署等开发纪律以工作区自己的 AGENTS.md / CLAUDE.md 为准（项目规则优先）。
 
 ## 决策阶梯
 
 0. **先看前人怎么写**：改动涉及某个角色时，先读它的语义卡、帧数据（[knowledge/frames](knowledge/frames/README.md)）和代码基线（[guides/baseline.md](guides/baseline.md)）。
 1. **先找内置函数**：查 [references/basechar-api.md](references/basechar-api.md)（角色侧）和 [references/task-api.md](references/task-api.md)（`self.task.*`）。
-2. **内置不够**时（内置模式先讨论），按 **5-1** 的顺序自实现：
+2. **内置不够**时，按 **5-1** 的顺序自实现：
    1. 内置 HUD 识别（`*_available`、`current_*`、`in_team`、回路、协奏）；
-   2. 自定义区域识别（颜色占比；内置 PR 还可以加模板）；
+   2. 自定义区域识别（颜色占比，或复用 WWisnotOK `assets/templates/` 中已有模板名）；
    3. 时间戳推算。
 
    写法见 [references/self-impl-patterns.md](references/self-impl-patterns.md)。
@@ -79,7 +79,7 @@ okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文�
 
   不得新建和已有时间戳重复的变量。
 - **2-7** 等入场动作结束或角色回到地面，用 `wait_down()`，不得用固定秒数普攻代替。只有要等 E/R 变得可用时才用 `wait_intro()`。
-- **2-8** 固定时长普攻用 `continues_normal_attack(duration)`，配合它的 `click_resonance_if_ready_and_return` / `until_con_full` 参数。`duration` 是真实时间，不扣冻结。
+- **2-8** 固定时长普攻用 `continues_normal_attack(duration)`，配合它的 `click_resonance_if_ready_and_return` / `until_con_full` 参数。`duration` 是真实时间，不扣冻结。带结束条件的左键连点可用 `continues_click_until(condition, time_out, interval=0.1)`。
 - **2-9** 手写的轮询循环必须有真实时间上限，每轮必须调用 `self.sleep()` 或 `self.task.next_frame()`。反例：上游 `normal_attack_until_can_switch` 是忙等。
 - **2-10** `click_liberation` 在 `in_team()` 第一次为真的那一帧返回，那一帧 HUD 可能还在淡入（队伍编号已过阈值、技能栏图标还没亮全）。R 后紧接着判 HUD 图标时，用 `wait_until(图标出现, time_out=0.3)` 从下一帧开始判，不在当前帧上做单帧判定，也不拿一次没认出就当“状态已结束”。案例：弗坎嘉 v7 test_1621，爆发图标在那一帧只有 0.62，两场都判成没进爆发。
 - **2-11** `click_liberation` 和 `click_resonance(has_animation=True)` 默认 `click_f=True`，演出期间（`in_team()` 为假）每 0.1 秒按一次 F。敌人韧性已空时，演出一结束就会触发击破。击破演出是全局时停：挑战计时器、技能冷却都停 1.3–1.5 秒，冻结记账（2-5）也算不进去。演出后紧跟按真实时间计时的动作（2-8 的固定时长普攻、按秒分组的爆发）时，传 `click_f=False`，击破留给切人时的 `f_break(check_f_on_switch=True)`（它的代价见 3-9）。注意治疗位 `check_f_on_switch` 为假，切人时不按 F。案例：弗坎嘉 v10 test_2142、v11 首版 test_2257，嘉贝莉娜 R 后爆发第 1 组被时停吃掉约 1.3 秒，协奏不满、无延奏切人。
@@ -97,10 +97,10 @@ okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文�
 - **3-8** 状态清理分两处，两处都先调用 `super()`，并且 `__init__` 里的初始值要和 `reset_state` 一致：
   - 每次上场的状态，在覆写的 `switch_out(con_full)` 里清；
   - 每场战斗的状态，在覆写的 `reset_state()` 里清（战斗结束和重新读队伍时都会调用）。
-- **3-9** 切人时框架会调出场角色的 `f_break(check_f_on_switch=True)`：有变奏时在发切人键**之前**（`BaseCombatTask.py:642-643`），无变奏时在认到换人**之后**（`:673-674`）。命中击破时 `task.f_break` 连按 F 加左键，直到认不到击破图标才返回，这时击破时停已近结束：v12 切人键在计时器恢复后约 0.1 秒发出，v13 坎 s1 开局的 `decide: break` 在恢复前 0.14–0.32 秒。所以有变奏的切人要等完整段演出：实测从切人日志行到技能栏换人约 1.8 秒，其中时停约 1.5 秒；没有击破时约 0.1 秒。出场节点靠切人取消最后一下的后摇（合轴）时，合轴会被这一段打断。不想在某个节点离场时击破，就覆写出场角色的 `f_break`，对该节点 `check_f_on_switch=True` 的调用返回 False（9b 是不分节点的版本）。案例：弗坎嘉 v12 test_0043 T1、T3。
-- **3-10** `task.can_break` 是粘滞标记：`check_f_break` 在战斗检查（`CombatCheck.py:145`）和 `cycle_sleep`（`BaseChar.py:184`）里认到 `f_break_full`（boss 血条左边的击破环满了）或击破图标就置真，之后只有 `task.f_break` 按过 F、或者战斗状态重置才清。认到以后如果没人按 F，比如离场的 `f_break` 被覆写跳过（3-9），或者 boss 没被击破就死了、换了场，这个旧标记会一直留到下一次 `f_break`。那时对着击破环是空的新 boss，照样连按 F 加左键至少 0.5 秒。节点里主动击破之前，先 `self.task.can_break = False`，只认当下的图标。切人流程中的击破调用遵守 3-9。真击破不受影响：`f_break_full` 每轮都能实时认到。案例：弗坎嘉 v13 test_0110 t2、t3。
-- **3-11** 生成代码前，按 [timeline.md](guides/timeline.md) 记录每次切人的类型、协奏状态、完成判据和 `allow_fill`。切人实现遵守 [step2.md §3](guides/step2.md)，不得默认补满协奏。实测按 `switch_next_char` 日志的 `has_intro`、`current_con` 逐条核对。案例：弗坎嘉 25 秒轴 v2 test_2304，弗洛洛强化重击后至少按住 1.0 秒再切，离场协奏 1，坎特蕾拉变奏入场，没打出普攻。参考视频第 6 音符到切人约 0.35 秒，用户于 2026-10-13 确认。
-- **3-12** 节点要“打到能切某人就切”时，宜按框架选人的同一判据等：`self.task.wait_until(lambda: not self.task._target_has_switch_cd(target), post_action=self.click_with_interval, time_out=N)`，N 取 1.5–2.0 秒，超时记 fallback 照切。框架选人会滤掉离场不到 1 秒（扣冻结）的角色（`BaseCombatTask.py:456`），切早了认不到候选，只普攻 0.2 秒就返回（3-1）；改用固定时长普攻又要留余量，会多等。案例：弗坎嘉 25 秒轴坎特蕾拉 s2。v5 固定普攻 1.0 秒，切回时嘉贝莉娜已过切人冷却 0.41 秒和 1.64 秒。2.0.7 改成条件等，`attack_s` 1.02–1.04 秒，节点游戏时长 1.25 秒，参考 1.19 秒（test_2358；用户确认 2026-10-15）。
+- **3-9** 切人时框架会调出场角色的 `f_break(check_f_on_switch=True)`：有变奏时在发切人键**之前**，无变奏时在认到换人**之后**。命中击破时 `task.f_break` 连按 F 加左键，直到认不到击破图标才返回，这时击破时停已近结束：v12 切人键在计时器恢复后约 0.1 秒发出，v13 坎 s1 开局的 `decide: break` 在恢复前 0.14–0.32 秒。所以有变奏的切人要等完整段演出：实测从切人日志行到技能栏换人约 1.8 秒，其中时停约 1.5 秒；没有击破时约 0.1 秒。出场节点靠切人取消最后一下的后摇（合轴）时，合轴会被这一段打断。不想在某个节点离场时击破，就覆写出场角色的 `f_break`，对该节点 `check_f_on_switch=True` 的调用返回 False（9b 是不分节点的版本）。案例：弗坎嘉 v12 test_0043 T1、T3。
+- **3-10** `task.can_break` 是粘滞标记：战斗检查和 `cycle_sleep` 认到 `f_break_full`（boss 血条左边的击破环满了）或击破图标就置真，之后只有 `task.f_break` 按过 F、或者战斗状态重置才清。认到以后如果没人按 F，比如离场的 `f_break` 被覆写跳过（3-9），或者 boss 没被击破就死了、换了场，这个旧标记会一直留到下一次 `f_break`。那时对着击破环是空的新 boss，照样连按 F 加左键至少 0.5 秒。节点里主动击破之前，先 `self.task.can_break = False`，只认当下的图标。切人流程中的击破调用遵守 3-9。真击破不受影响：`f_break_full` 每轮都能实时认到。案例：弗坎嘉 v13 test_0110 t2、t3。
+- **3-11** 生成代码前，按 [timeline.md](guides/timeline.md) 记录每次切人的类型、协奏状态、完成判据和 `allow_fill`。切人实现遵守 [step2.md §3](guides/step2.md)，不得默认补满协奏。实测按 `decision-traces` 的 `switch_selected` 与日志逐条核对。案例：弗坎嘉 25 秒轴 v2 test_2304，弗洛洛强化重击后至少按住 1.0 秒再切，离场协奏 1，坎特蕾拉变奏入场，没打出普攻。参考视频第 6 音符到切人约 0.35 秒，用户于 2026-10-13 确认。
+- **3-12** 节点要“打到能切某人就切”时，宜按框架选人的同一判据等：`self.task.wait_until(lambda: not self.task._target_has_switch_cd(target), post_action=self.click_with_interval, time_out=N)`，N 取 1.5–2.0 秒，超时记 fallback 照切。框架选人会滤掉离场不到 1 秒（扣冻结）的角色（见 WWisnotOK `SwitchSelection.cs`），切早了认不到候选，只普攻 0.2 秒就返回（3-1）；改用固定时长普攻又要留余量，会多等。案例：弗坎嘉 25 秒轴坎特蕾拉 s2。v5 固定普攻 1.0 秒，切回时嘉贝莉娜已过切人冷却 0.41 秒和 1.64 秒。2.0.7 改成条件等，`attack_s` 1.02–1.04 秒，节点游戏时长 1.25 秒，参考 1.19 秒（test_2358；用户确认 2026-10-15）。
 
 ### 4 资源判断
 
@@ -131,15 +131,13 @@ okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文�
 
   E 的确认信号只适用于放完必进冷却的技能。放完后图标变成另一个无冷却可用技能的（多段、终结后回到普通技能），连按到冷却出现会把下一个也放出来，这类只按一次。案例：弗坎嘉 25 秒轴 v1 test_2216，坎特蕾拉终结技能放完图标回到普通 E，连按多放了一个普通 E（用户确认 2026-10-13）。
 - **5-4** 手写的按住操作（`mouse_down`、`send_key_down`）放进 try/finally，在 finally 里松开。按住期间不宜调用其他发键或点击函数。原因：PostMessage 后端的 `send_key_down`、`mouse_down`、`click` 每次都先向游戏窗口发 `WM_ACTIVATE`，可能打断按住（未确认）。
-- **5-5** 自定义识别自由度高，有两种做法：
+- **5-5** 自定义识别自由度高：
   - 颜色占比：`box_of_screen_scaled(...)` + `calculate_color_percentage` + 阈值。比例打 debug 日志，颜色优先复用框架已有的；
-  - 模板：只限内置代码 PR，按项目的模板流程提交。
+  - 复用已有模板：仅可使用 WWisnotOK `assets/templates/` 中已存在的模板名（`strategy_host/validate.py` 会校验模板存在）。
 
-  工坊 zip 无法携带模板，所以工坊只能用颜色占比或已有模板。
-- **5-6** 角色代码不捕获异常。`NotInCombatException` / `CharDeadException` 要一路抛给 `AutoCombatTask`。唯一的例外是日志 helper 吞掉它自己的异常。
-- **5-7** 从日志或视频量出的时长、阈值，按模式决定写法：
-  - 工坊代码随意。可以写成类常量，并配测试式备注（如“视频实测 R 1.8s”）；
-  - 内置 PR 代码要正式：用上游风格的简洁注释说明游戏机制或原因，不写测试和实测记录。实测数据放进 PR 描述。
+  工坊 zip 无法携带新图片模板。
+- **5-6** 角色代码不捕获异常。`NotInCombatException` / `CharDeadException` / `TaskDisabledException` 要一路抛给引擎。唯一的例外是日志 helper 吞掉它自己的异常。
+- **5-7** 从日志或视频量出的时长、阈值，宜写成类常量，并配简明备注（如“视频实测 R 1.8s”）。
 - **5-8** 根据日志和视频迭代：
   1. 在日志里定位节点、ok/fail 和 reason；
   2. 对照视频里的对应时刻；
@@ -167,29 +165,28 @@ okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文�
 - **L-5** 动作内部由代码量到的耗时写 `<名称>_s` 字段，取 `time.time()` 之差；跨动作的耗时看两行时间戳的差。常量和配置值不得写成 `_s` 字段。
 - **L-6 / L-7** 字段名、耗时字段名和 `reason` 码都用固定的 snake_case 词表，新词先加进词表再用。格式：布尔写 True/False，比例保留 3 位小数，其他浮点保留 2 位。fail 行分不出原因时（又不能额外读状态，L-8），省略 `reason`。
 - **L-8** 不为打日志额外读状态，失败路径也一样；需要的值在做判断时就存进变量。两个坑：`get_current_con()` 会写 `current_con`，`has_cd()` 会触发 OCR。
-- **L-9 / L-10** 两种模式的写法不同：
-  - 内置模式：保留框架日志、不重复打，直接内联写 `self.logger.info(f'...')`；
-  - 工坊模式：可以用 `_trace` helper。循环轴角色还要把框架 info 降为 debug，并过滤两行切人日志（见 workshop.md）。
+- **L-9 / L-10** 写法与日志降级：
+  - 普通队伍代码直接写 `self.logger.info(f'...')` 或使用 `_trace` helper；
+  - 循环轴角色用 `_trace` helper（通过 `_raw_logger` 输出），并把 `self.logger` 的 info 降为 debug，避免角色基类常规 info 刷屏（见 workshop.md）。
 - **L-11** 为查问题临时加的行写成 `probe <对象>`、info 级，字段可以自定。README 列出开着的 probe 行；问题查清后的下一版删掉。
 - 写法流程和交付前检查见 [日志 Skill](skills/logging/SKILL.md)，检查脚本是 `scripts/check_logs.py`。
 
 ### 6 工坊循环轴（摘要，全文见 references/workshop.md）
 
-- **6-1** 只用于脚本化交场链的工坊队，即每个节点写明下一个上场的人和他要执行的动作体。其他工坊角色用普通的 `do_perform` + `get_switch_priority`。
-- **6-2** f 是启动轴（每场只跑一遍），s 是循环轴，每个角色从 1 开始编号。动作体写成 `_action_xx(tag, nxt)`；`perform_fN` / `perform_sN` 薄包装的最后一行固定写成 `self._force_switch_to(self._find_teammate('X'), 'mode')`。
-- **6-3** 队里每个类都带同一套协议：`__init__` 字段、`get_switch_priority` 头部拦截、`_find_teammate`，以及带 try/finally 的 `_force_switch_to`。注意 NB-1：处于满协奏锁定期的治疗目标无法被强切。
+- **6-1** 只用于脚本化交场链的工坊队，即每个节点写明下一个上场的人和他要执行的动作体。其他队伍角色用普通的 `do_perform` + `get_switch_priority`。
+- **6-2** f 是启动轴（每场只跑一遍），s 是循环轴，每个角色从 1 开始编号（有变轴或末轮时可扩展 `c`/`z` 族并在 `verify_chain.py` 的 `LOOP_PREFIXES` 登记）。动作体写成 `_action_xx(tag, nxt)`；`perform_fN` / `perform_sN` 薄包装的最后一行固定写成 `self._force_switch_to(self._find_teammate('X'), 'mode')`。
+- **6-3** 队里每个类都带同一套协议：`__init__` 字段、`get_switch_priority` 头部拦截、`_find_teammate`，以及带 try/finally 的 `_force_switch_to`。注意 NB-1：双治疗队且当前治疗无变奏时，无法强切另一名处于满协奏锁定期的治疗目标（非治疗或带变奏切锁定治疗时，WWisnotOK `SwitchSelection` 已通过 `healer_lockout_fallback` 正常切出）。
 - **6-4** 分发器的规则：
   - 先读取并清空 `_entry_mode`；
   - 自然入场三选一：f1 / s1 / 交还框架；
-  - 进入任一 s 模式时置整队 `_startup_done`（单向）；
+  - 进入任一 s（或循环族）模式时置整队 `_startup_done`（单向）；
   - 未知模式交还框架，绝不重开 f1；
   - `reset_state` 清 3 个字段。
 - **6-5** 每次重打包前跑 `verify_chain.py`；新增断言后先做变异测试，确认它会失败。
 - **6-6 / 6-7** 日志处理：
-  - 降级：框架 info 降为 debug；
-  - 过滤：两行任务层切人 info 用作用域过滤器滤掉，warning/error 不过滤；
-  - exit 行不读协奏；
-  - 框架的 `switch_next_char A -> B ... current_con` 行保留。
+  - 降级：轴角色的 `self.logger` 把 info 降为 debug，warning/error 原样，自有节点日志通过 `_raw_logger` 经 `PipeLog` 转发到 WWisnotOK；
+  - 决策记录：切人选择、协奏证据和动作等待直接由 WWisnotOK 决策追踪（`decision-traces`）采集，不再需要在 `"ok"` logger 上挂载任务层过滤器；
+  - exit 行不读协奏。
 - **6-8** `skip_combat_check` 保持窗口和只放行 force 的 `f_break` 不属于骨架，只作为可选案例。
 
 ## 迭代工作流（日志 + 视频）
@@ -204,7 +201,7 @@ okwwcharcode Skill 的代码规则。代码实现和实测修改都依照本文�
 | 文件 | 内容 |
 |---|---|
 | [references/basechar-api.md](references/basechar-api.md) | BaseChar 常用函数详条（签名、行为、副作用、坑、对比、何时用、上游例子）+ 全量成员索引 |
-| [references/task-api.md](references/task-api.md) | 角色代码用到的 `self.task.*`（BaseCombatTask / BaseWWTask / ok-script）+ 异常与战斗检查机制 |
+| [references/task-api.md](references/task-api.md) | 角色代码用到的 `self.task.*`（`TaskProxy` / C# `CombatEngine`）+ 异常与战斗检查机制 |
 | [references/self-impl-patterns.md](references/self-impl-patterns.md) | 自实现套路：时间谓词、发送-确认-记录、按住、颜色识别、模板流程 |
 | [references/logging.md](references/logging.md) | 日志模板、级别、必打时机、字段与耗时字段词表、reason 词表、probe 行、`_trace` 参考实现 |
 | [references/workshop.md](references/workshop.md) | 工坊 zip 格式、循环轴骨架完整代码、日志过滤器、可选案例 |

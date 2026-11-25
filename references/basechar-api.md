@@ -2,9 +2,8 @@
 
 **基线**
 
-- 上游 `ok-oldking/ok-wuthering-waves` master `2243d465`，行号均指 `src/char/BaseChar.py`，除非另有注明。
-- 框架 ok-script `v2.0.8`。
-- 源码与本文不一致时以源码为准，并修正本文（0-1）。
+- [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`，通用方法通过 `self.task._char_call(...)` 交由 C# 引擎执行）。
+- 下文旧版方法行号仅作历史定位参考，实际行为以当前 WWisnotOK `strategy_host/src/char/BaseChar.py` 与 `src/WWisnotOK/Core/` 源码为准（0-1）。
 
 **调用频次**
 
@@ -169,9 +168,9 @@ def get_switch_priority(self, current_char=None, has_intro=False, target_low_con
 
 反例：Brant 在这里调用了 `self.decide_teammate()`，Carlotta 也在这里做初始化。新代码不要在此改状态（3-3）。
 
-### healer_full_con_switch_locked()（`:712`）
+### healer_full_con_switch_locked()
 
-治疗角色满协奏切出后 16 秒内（扣冻结）为 True。task 在调用 `get_switch_priority` **之前**先做这项判断，所以覆写 `get_switch_priority` 返回 MUST 也绕不过锁定（工坊 NB-1）。
+治疗角色满协奏切出后 16 秒内（扣冻结）为 True。WWisnotOK `SwitchSelection.Choose`（`Core/SwitchSelection.cs:18-26`）先调用 `get_switch_priority`，把 `HealerLocked && Priority > 0` 的治疗记入 `locked` 列表：非治疗或带变奏切人且无其他候选时，走 `healer_lockout_fallback` 正常切出；仅双治疗队且当前治疗无变奏强切锁定治疗时仍返回 `no_candidate_above_no_priority`（见 workshop.md NB-1）。
 
 ### need_fast_perform()（`:825`，12 次 / 9 文件）
 
@@ -287,7 +286,7 @@ send_liberation_key(after_sleep=0, interval=-1, down_time=0.01)
 
 ### get_resonance_key / get_echo_key / get_liberation_key（`:697` / `:693` / `:689`）
 
-代理到 task，读取用户在 ok-ww 设置里配置的键位。1-2：不要写死。
+代理到 task，读取用户在 WWisnotOK 设置里配置的键位。1-2：不要写死。
 
 ### record_resonance_use / record_liberation_use / record_echo_use（`:505-515`）
 
@@ -440,15 +439,19 @@ send_liberation_key(after_sleep=0, interval=-1, down_time=0.01)
 
 ## 等待与计时
 
-### sleep(sec, check_combat=True)（`:358`，112 次 / 38 文件）
+### sleep(sec, check_combat=True)
 
-- `check_combat=False` 时，在 sleep 期间置 `task.skip_combat_check=True`。
-- 执行链：`task.sleep` → `BaseWWTask.sleep`（会扣掉月卡检查的耗时）→ `executor.sleep`：
-  - 期间距上次检查满 `sleep_check_interval=0.4` 秒，就抓一帧并调用 `task.sleep_check()`；
-  - `sleep_check()` 发现已脱战时 `raise_not_in_combat`。
+- `check_combat=False` 时，在 sleep 期间保存先前的 `task.skip_combat_check` 并置为 `True`，在 `finally` 中恢复原值（不再无条件清为 `False`）。
+- 执行期间按引擎战斗检查间隔抓帧，发现已脱战时抛出 `NotInCombatException`。
 - `sec <= 0` 时立即返回：不抓帧，也不做检查。
 
 2-1：不要用 `time.sleep()`，它既不抓帧，也不响应暂停和停止。
+
+### continues_click_until(condition, time_out, interval=0.1)
+
+- 持续左键普攻直到 `condition()` 返回真值或达到 `time_out` 秒（每轮前刷新画面并带 `pre_action=self.check_combat`）。
+- 命中条件返回 `True`，超时返回 `False`；`time_out <= 0` 时只检查一次条件不点击。
+- 适合需要“边普攻边等某 HUD/状态条件成立”的动作段，不必手写 while 循环。
 
 ### wait_down(click=True)（`:231`，33 次 / 22 文件）
 
@@ -515,7 +518,7 @@ send_liberation_key(after_sleep=0, interval=-1, down_time=0.01)
 
 ## 全量成员索引
 
-`src/char/BaseChar.py`@`2243d465`，按行号排列。
+历史行号索引（原 `BaseChar.py`，新版本以 WWisnotOK `strategy_host/src/char/BaseChar.py` 为准；另新增 `continues_click_until(condition, time_out, interval=0.1)`）：
 
 ```
 66   HEALER_FULL_CON_SWITCH_LOCKOUT = 16.0

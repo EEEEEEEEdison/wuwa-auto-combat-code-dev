@@ -1,8 +1,8 @@
 # 工坊配队与循环轴骨架
 
-**基线**：上游 `2243d465`。骨架来自工坊队“今弗坎 3.6.7 v1”（坎特蕾拉 + 今汐 + 弗洛洛）的实测写法，去掉了队伍专属的内容。
+**基线**：[WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`（`TeamStore.cs`、`strategy_host/worker.py`、`strategy_host/validate.py`）。骨架来自实测循环轴配队写法，去掉了队伍专属的内容。
 
-工坊模式的自由度高，本篇的骨架只用来加快开发；交付说明里要标出自实现的部分。
+本篇的骨架用于加快开发；交付说明里要标出自实现的部分。
 
 ## 目录
 
@@ -11,7 +11,7 @@
 3. [命名与动作体（6-2）](#3-命名与动作体)
 4. [强切协议（6-3）与 NB-1](#4-强切协议)
 5. [分发器（6-4）](#5-分发器)
-6. [日志：降级与作用域过滤（6-6 / 6-7）](#6-日志)
+6. [日志：降级与决策追踪（6-6 / 6-7）](#6-日志)
 7. [完整骨架代码](#7-完整骨架代码)
 8. [交场链自检（6-5）](#8-交场链自检)
 9. [可选案例（6-8，不属于骨架）](#9-可选案例)
@@ -21,19 +21,19 @@
 
 ## 1. 工坊 zip 格式
 
-导入时，`src/char/CustomCharLoader.py:521` 的 `inspect_team_archive` 会强制校验以下各项。
+导入时，WWisnotOK `TeamStore.ImportAsync` 与 `strategy_host/validate.py`（以及 `scripts/pack_team.py`）会强制校验以下各项。
 
 **zip 结构**
 
-- 平铺，不能有子目录；
+- 平铺，不能有子目录，不能有重名文件；
 - 内容**恰好**是 `team.json` 加队伍 3 个角色的 `<ClassName>.py`；多一个、少一个文件都会被拒；
-- 单个文件不超过 2,000,000 字节。
+- 单个文件不超过 2,000,000 字节，整个压缩包不超过 20,000,000 字节。
 
 **team.json**
 
 - `name`、`description`、`author`、`version`、`team` 五个字段都必须是非空字符串；
-- `team` 是逗号分隔的英文角色名，必须按字母序排列（不区分大小写），并且每个名字都必须是已注册的角色。
-  - 名字用**英文显示名**，不是 `char_xxx` 这种 key。大多数角色的显示名就是类名，少数有映射（`CustomCharLoader.py:25-34`）：例如类 `Linnai` 写 `Lynae`，类 `Xiangliyao` 写 `Xiangli Yao`，类 `Luhesi` 写 `Luuk Herssen`。排序按显示名比较。
+- `team` 是逗号分隔的英文显示名，必须按字母序排列（不区分大小写），并且每个名字都必须对应 `assets/characters.json` 中已注册的角色。
+  - 名字用**英文显示名**，大多数角色的显示名就是类名，少数有映射（`Core/Contracts.cs` `Names.Aliases`）：例如 `Douling` → `Buling`、`Linnai` → `Lynae`、`Xiangliyao` → `Xiangli Yao`、`Luhesi` → `Luuk Herssen`、`Xigelika` → `Sigrika`、`ShoreKeeper` → `Shorekeeper`、`YangYangSp` → `Yangyang: Xuanling`、漂泊者统一为类名 `Rover`（显示名 `Rover`）。排序按显示名比较。
   - 逗号两侧的空格会被去掉，例如 `"Cantarella, Jinhsi, Phrolova"`。
   - zip 里的 `.py` 文件名用**类名**（`Linnai.py`），不是显示名。
 
@@ -41,26 +41,21 @@
 
 - UTF-8 编码；
 - 顶层必须定义同名类 `class <ClassName>`；
-- 必须能编译（`_validate_character_code`，`:610`）；
-- 加载时类必须继承 `BaseChar`（`:776`）；
-- CRLF 换行会被归一化。
+- 必须通过 `strategy_host/validate.py`：AST 解析、编译、继承 `BaseChar`、构造函数不执行游戏操作；
+- CRLF 换行会被归一化为 LF。
 
 **能力边界**
 
-- **不能携带图片模板**。识别只能用颜色占比，或项目里已有的模板名（5-5）。
-- 可以 `from src.char.BaseChar import BaseChar, SwitchPriority, forte_white_color`，也可以 import 框架里的其他模块。
-- 三个文件各自独立加载，**不能互相 import**。所以共用的 helper 每个文件各带一份，内容保持一致。
+- **不能携带图片模板**。识别只能用颜色占比，或复用 WWisnotOK `assets/templates/` 里已有的模板名（5-5；`validate.py` 会校验模板存在）。
+- 可以 `from src.char.BaseChar import BaseChar, SwitchPriority, forte_white_color`，也可以 import `strategy_host` 提供的模块（如 `ok`、`src.Labels`）。
+- 三个文件在 `worker.py` 中各自加载到独立模块，**不能互相 import**。所以共用的 helper 每个文件各带一份，内容保持一致。
 - 直接继承 `BaseChar` 的工坊类和内置类没有继承关系：`isinstance(char, src.char.Jinhsi.Jinhsi)` 判断不到，`task.has_char(cls)` 也一样。要按类名查找（`_find_teammate`）。
 
-**实例替换（事实）**
+**实例同步与状态保留（事实）**
 
-- 队伍三人都识别到之后，`apply_team_char_classes`（`src/char/CharFactory.py:215`）会先建内置类实例，再新建工坊类实例替换它，并执行 `replacement.__dict__.update(char.__dict__)`（`:240`）。
-- 后果一：工坊类在 `__init__` 里给**内置实例也有的属性**赋的值，会被内置实例的值覆盖。最典型的是 `logger`：`BaseChar.__init__` 给它赋了值（`BaseChar.py:107`）。所以改这类属性要用类上的 property，见第 6 节。
-  - 实测：今弗坎在 `__init__` 里替换 `self.logger`，结果在 2026-10-04 的实机日志里，`click_liberation end` 照常输出。
-  - 只属于工坊类的新字段（协议字段等）不受影响。
-- 后果二：直接继承 `BaseChar` 时，`get_char_by_pos` 的 `isinstance(old_char, 内置类)` 不成立（`CharFactory.py:188`），每次 `load_chars` 都会重建实例。
-  - `load_chars` 在每次脱战状态的战斗检查里都会被调用（`CombatCheck.py:166/182`），所以**每场开战时，工坊实例都是新建的**：`__init__` 重新执行，`last_res` / `last_liberation` 等框架时间戳也回到初始值。
-  - 需要跨场保存的状态不能放在实例上。
+- `strategy_host/worker.py` 的 `sync_team` 加载导入代码时，若 `preserve_state=True` 且存在同槽位同名旧实例，会执行 `char.__dict__.update(old.__dict__)`（`worker.py:107-108`）。
+- 后果一：在 `__init__` 里直接赋值 `self.logger = ...` 会被旧实例的 `__dict__` 覆盖回去。所以改 `logger` 仍须用类上的 `@property` 数据描述符（第 6 节），查找优先级高于实例 `__dict__`。
+- 后果二：场景恢复（退出副本回大世界、离战 HUD 消失 ≥1.5 秒、策略进程重连或 `reset_state=True`）时，队伍会重新同步且不继承旧实例计时字段。需要跨场保存的状态不能放在实例上。
 
 ## 2. 何时用循环轴骨架
 
@@ -107,16 +102,12 @@
    3. 在 `try` 里调用 `self.switch_next_char()`；
    4. 在 `finally` 里清掉全队的标记。
 
-**NB-1（已知漏洞，骨架本身绕不开）**
+**NB-1（双治疗队特殊边界）**
 
-- **原因**：框架的 `_choose_switch_target` 在调用 `get_switch_priority` **之前**，先把处于满协奏锁定期（16 秒，扣冻结）的治疗角色判成 `NO`（`BaseCombatTask.py:537-542`）。如果强切目标正好是刚满协奏切下场的治疗：
-  - 它拿不到 MUST；
-  - 其他人又因为拦截都返回 NO。
-- **后果**：
-  1. 框架打 warning `can't find next char`，普攻 0.2 秒后返回；
-  2. 本角色以自然入场再次进入分发器；
-  3. 交场链在这里断开。
-- **对策**：设计链条时，不要让治疗在满协奏切下场后 16 秒内被强切回来。
+- **机制**：WWisnotOK `SwitchSelection.Choose`（`Core/SwitchSelection.cs:18-26`）先调用各候选的 `get_switch_priority`，再把 `HealerLocked && Priority > 0` 的治疗角色放入 `locked` 列表。当常规候选为空（因为其余队友被 `_force_switch_me` 拦成 `NO`）时：
+  - 若当前在场角色**不是治疗**，或**带变奏切人**（`current.Role != "Healer" || context.HasIntro`）：走 `healer_lockout_fallback` 正常切给该治疗，不会死锁。
+  - 若是**双治疗队且当前治疗无变奏**强切另一名处于 16 秒（扣冻结）满协奏锁定期的治疗：返回 `no_candidate_above_no_priority`，交场链会在此断开。
+- **对策**：双治疗队避免在治疗满协奏离场后 16 秒内由另一名治疗无变奏强切回来。
 
 ## 5. 分发器
 
@@ -139,28 +130,19 @@
 
 日志模板与词表见 logging.md。循环轴层在模板前加 `[F1]` / `[S2]` 标签。
 
-**6-6 降级与过滤**
+**6-6 按实例降级**
 
-- **按实例降级**：在类上把 `logger` 定义成 property。
+- 在类上把 `logger` 定义成 property：
   - setter 接住 `BaseChar.__init__` 赋的 Logger，存成 `_raw_logger`，同时包一层 `_InfoAsDebug`；getter 返回这层包装。
-  - 框架通过 `self.logger` 打的 info 行（`click_liberation end`、`In lock with`、`switch_out at full con`……）就降为 debug，正式版看不到，`main_debug` 里仍然能看到。
-  - **不要在 `__init__` 里直接赋值 `self.logger = ...`**：会被 CharFactory 的 `__dict__.update` 覆盖回去（第 1 节“实例替换”）。property 是数据描述符，查找时优先于实例 `__dict__`，所以不受影响。
-  - warning 和 error 原样输出。
-  - 模板行走 `_raw_logger`，见 `_trace`。
-- **任务层过滤**：`BaseCombatTask` 的切人 info 行用的是模块级 logger，没法按实例降级。改为在共享的 `logging.getLogger("ok")` 上挂一个 `logging.Filter`，按前缀丢弃两种行：
-  - `BaseCombatTask:switch selection result`；
-  - `BaseCombatTask:switch_next_char end`。
-- **过滤器的作用范围**：
-  - 由轴角色在 `__init__` 里安装，靠标记属性 `okww_axis_switch_filter` 去重，**只装一次**；
-  - 只在 `executor.current_task` 的队伍里含轴角色（`_axis_char = True`）时生效。换成别的队伍后，框架行自动恢复，不用重启 ok-ww；
-  - 只过滤 info，**warning 和 error 一律不过滤**；
-  - 过滤器内部吞掉自己的异常，返回 True（放行）。这是日志 helper 的例外（5-6）；
-  - 已装的过滤器会一直留到 ok-ww 重启。重新导入 zip 后，如果改了前缀列表，要重启才生效。
+  - 基类通过 `self.logger` 打的常规 info 行会降为 debug，不写入默认 info 级记录；warning 和 error 原样输出。
+  - **不要在 `__init__` 里直接赋值 `self.logger = ...`**：会被 `worker.py` `sync_team` 的 `__dict__.update` 覆盖回去（第 1 节）。property 是数据描述符，不受影响。
+  - 自有模板行走 `_raw_logger`（见 `_trace`），由 `PipeLog` 转发到 WWisnotOK 日志，自动带中文角色名前缀（`坎特蕾拉：[F1] enter ...`）。
+- WWisnotOK 不使用共享 `"ok"` logger，切人选择、协奏和动作等待由 C# 引擎的决策追踪（`decision-traces`）独立记录，因此不再需要在 `"ok"` logger 上挂载作用域过滤器。
 
-**6-7 exit 行与框架行**
+**6-7 exit 行与切人核对**
 
 - `exit` 行不读协奏（L-8）。
-- 框架的 `switch_next_char A -> B … has_intro … current_con …` 行**保留**，不过滤。它自带协奏读数和是否带变奏，而且这是框架本来就要读的值。
+- 切人是否带变奏、离场协奏和选人原因，在实测时直接核对 WWisnotOK 决策追踪的 `switch_selected` 与 `concerto` 事件。
 
 ## 7. 完整骨架代码
 
@@ -170,16 +152,10 @@
 - 节点内容（`_action_*`）是占位示例，要按实际轴来写。写的时候遵守第 1～5 组规则。
 
 ```python
-import logging
-
 from src.char.BaseChar import BaseChar, SwitchPriority
 
 # ---------------- 模块级日志部件（三个文件各带一份，内容保持一致） ----------------
 _RATIO_FIELDS = ('con', 'res_pct')
-_FILTERED_SWITCH_LINES = (
-    'BaseCombatTask:switch selection result',
-    'BaseCombatTask:switch_next_char end',
-)
 
 
 def _fmt_value(key, v):
@@ -201,41 +177,13 @@ class _InfoAsDebug:
         return getattr(self._inner, name)
 
 
-class _AxisSwitchFilter(logging.Filter):
-    """Drops the task-level switch info lines while the running task's team has an axis char."""
-
-    okww_axis_switch_filter = True
-
-    def __init__(self, executor):
-        super().__init__()
-        self._executor = executor
-
-    def filter(self, record):
-        try:
-            if record.levelno != logging.INFO or not record.getMessage().startswith(_FILTERED_SWITCH_LINES):
-                return True
-            chars = getattr(self._executor.current_task, 'chars', None) or []
-            return not any(getattr(char, '_axis_char', False) for char in chars)
-        except Exception:
-            return True
-
-
-def _install_axis_switch_filter(task):
-    try:
-        ok_logger = logging.getLogger('ok')
-        if not any(getattr(f, 'okww_axis_switch_filter', False) for f in ok_logger.filters):
-            ok_logger.addFilter(_AxisSwitchFilter(task.executor))
-    except Exception:
-        pass
-
-
 class Alpha(BaseChar):
     """Workshop axis team Alpha / Beta / Gamma: Alpha opens the startup axis."""
 
     _axis_char = True
 
-    # A property, not an __init__ assignment: CharFactory copies the built-in instance's __dict__
-    # over this one on team load, and a data descriptor wins over the instance __dict__.
+    # A property, not an __init__ assignment: worker.py copies the old instance's __dict__
+    # over this one on preserve_state sync, and a data descriptor wins over the instance __dict__.
     @property
     def logger(self):
         return self._quiet_logger
@@ -247,7 +195,6 @@ class Alpha(BaseChar):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        _install_axis_switch_filter(self.task)
         self._force_switch_me = False
         self._entry_mode = None
         self._node = None
@@ -382,8 +329,9 @@ class Alpha(BaseChar):
 1. 把它复制到队伍目录（不打进 zip）。
 2. 填写：
    - `FILES`：三个类名；
+   - `LOOP_PREFIXES`：循环及后续节点前缀，默认 `('s',)`；带变轴或末轮时可设为 `('s', 'c', 'z')`；
    - `EXPECTED`：每条交接边 `(源类, 源mode, 目标类, 目标mode)`；
-   - `STARTUP_END`：唯一的 f→s 边；
+   - `STARTUP_END`：唯一的启动→循环边；
    - `PENDING`：尚未实现的端点，可以留空。
 3. 运行 `python verify_chain.py [队伍目录]`。不传目录时，默认使用脚本所在目录。退出码 0 表示通过，1 表示不一致。
 
@@ -391,9 +339,9 @@ class Alpha(BaseChar):
 
 - `EXPECTED` 的每条边都存在；
 - 没有多余的边；
-- f→s 的边只有一条，并且等于 `STARTUP_END`；
-- 从 s 节点出发的边和 `EXPECTED` 里的对应边逐条一致；
-- s 族首尾闭环：每个有 s 入边的节点都有 s 出边；
+- 启动→循环边只有一条，并且等于 `STARTUP_END`；
+- 从循环族节点出发的边和 `EXPECTED` 里的对应边逐条一致，且不回跳非循环节点；
+- 循环族闭环：每个有循环入边的节点都有循环出边；
 - 每个目标 `perform_<mode>` 都存在。
 
 **要求**：
@@ -437,8 +385,8 @@ class Alpha(BaseChar):
 
 ## 10. 交付前检查
 
-- [ ] 三个 `.py` 都能 `py_compile`。
+- [ ] 三个 `.py` 都能通过内存 `ast.parse` 语法检查，并通过 `scripts/pack_team.py`（含 WWisnotOK `strategy_host/validate.py`）。
 - [ ] 每个类都带完整的协议（6-3）：`__init__` 字段、拦截、`_find_teammate`、`_force_switch_to`。
 - [ ] `verify_chain.py` 返回 PASS；新增断言做过变异测试（6-5）。
-- [ ] zip 内容恰好是 `team.json` 加 3 个 `.py`；`team.json` 的 `team` 按字母序排列（第 1 节）。
-- [ ] 交付说明里标出自实现的部分（工坊模式要求）。
+- [ ] zip 内容恰好是 `team.json` 加 3 个 `.py`；`team.json` 的 `team` 按英文显示名字母序排列（第 1 节）。
+- [ ] 交付说明里标出自实现的部分。

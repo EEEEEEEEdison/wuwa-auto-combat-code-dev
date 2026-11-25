@@ -1,16 +1,9 @@
 # 自实现套路
 
 只有内置函数确实不够用时才读本篇。
+在 WWisnotOK 队伍代码中可以直接使用这些套路；交付说明里要标出自实现的部分。
 
-**内置模式**：新 helper、状态机、循环都属于造新轮子，写之前先和用户讨论。讨论时要说明三点：
-
-- 内置函数为什么不行；
-- 影响范围；
-- 怎么回滚。
-
-**工坊模式**：可以直接用。交付说明里要标出自实现的部分。
-
-**基线**：上游 `2243d465`，ok-script `v2.0.8`。行号见 basechar-api.md 和 task-api.md。
+**基线**：WWisnotOK `v0.4.7`（`strategy_host/src/char/BaseChar.py`、`strategy_host/bridge.py`、`src/WWisnotOK/Core/`）。API 详情见 basechar-api.md 和 task-api.md。
 
 ## 目录
 
@@ -32,7 +25,7 @@
 没有合适的内置函数时，按下面顺序选实现方式（5-1）：
 
 1. **内置 HUD 识别**：`*_available()`、`current_*()`、`task.in_team()`、`is_forte_full` / `is_mouse_forte_full` / `is_e_forte_full`、`is_con_full` / `get_current_con`。
-2. **自定义区域识别**：颜色占比；内置 PR 还可以加模板。见第 6 节。
+2. **自定义区域识别**：颜色占比，或复用 WWisnotOK 已有模板名。见第 6 节。
 3. **时间戳推算**：用来推算识别不到的游戏内状态，例如 buff 剩余、窗口期、技能段数。见第 2 节。
 
 各方式的取舍：
@@ -223,7 +216,7 @@ def is_forte_full_example_bar(self):
 **阈值**
 
 - 比例打 `debug`。L-1 规定高频细节用 debug；L-6 规定比例保留 3 位小数；
-- 阈值来自实测：工坊可以写测试式注释，内置 PR 的写法见 5-7。
+- 阈值来自实测，按 5-7 写成类常量并配简明备注。
 
 **命名**（4-1）
 
@@ -238,25 +231,12 @@ def is_forte_full_example_bar(self):
 
 **只对在场角色有效**（4-4）：HUD 上显示的永远是在场角色的状态。
 
-### 6b 图片模板（只限内置代码 PR）
+### 6b 复用已有模板（不可随 zip 携带新图片）
 
-工坊 zip 只能包含 `team.json` 和 3 个 `.py` 文件（`CustomCharLoader.inspect_team_archive` 强制校验），**带不了图片**。所以工坊里只能用 6a，或者使用项目里已有的模板名。
+工坊 zip 只能包含 `team.json` 和 3 个 `.py` 文件（WWisnotOK `TeamStore` 强制校验），**带不了新图片**。因此自定义识别只能用 6a 颜色占比，或复用 WWisnotOK `assets/templates/` 中已存在的模板名：
 
-内置 PR 加模板，按项目的模板流程走（上游 `2243d465`）：
-
-1. 把 3840×2160 的游戏截图放进 `assets/images/`（目前有 49 张）。
-2. 在 `assets/coco_annotations.json` 里登记：
-   - `images` 条目：`file_name`、`width` 3840、`height` 2160；
-   - `categories` 条目：`name` 就是模板名；
-   - `annotations` 条目：`image_id`、`category_id`、`bbox` = `[x, y, w, h]`。
-3. 在 `src/Labels.py` 的 `Labels(str, Enum)` 里加同名条目。上游说明是“generated from annotated assets”。
-4. 如果模板位于 HUD 水平居中区域，把名字加进 `config.py` 的 `template_matching['hcenter_features']`。垂直居中的加进 `vcenter_features`。
-5. 代码里用 `self.task.find_one(Labels.xxx, threshold=0.7)` 或 `self.task.find_one('xxx', ...)`。
-
-**注意**：
-
-- 模板标注属于开发者负责的资产。不要伪造 bbox，坐标必须从真实截图里量。
-- 上游仓库自带的 `.agents/skills/ok-ww-characters` 也要求“不要凭空编造 Labels”。
+- 代码里用 `self.task.find_one(Labels.xxx, threshold=0.7)` 或 `self.task.find_one('xxx', ...)`；
+- `strategy_host/validate.py` 会在打包校验时检查 `get_feature_by_name` / `get_box_by_name` 引用的模板是否存在于 `assets/templates/`，不得凭空编造模板名。
 
 ## 7. 状态存储与清理
 
@@ -302,12 +282,7 @@ def reset_state(self):
 
 ## 9. 常量与注释
 
-从日志或视频量出来的时长和阈值，按模式区分写法（5-7）：
-
-| 模式 | 写法 |
-|---|---|
-| 工坊 | 随意。可以写成类常量，并配测试式备注，例如 `R_ANIMATION = 1.8  # 视频实测 R 演出 1.8s` |
-| 内置 PR | 要正式：上游风格的简洁注释，说明**游戏机制或原因**，例如 `# 回路在尾段消耗；过滤瞬间变暗`（`Rover.py:138`）。不写测试、实测记录。实测数据放进 PR 描述 |
+从日志或视频量出来的时长和阈值（5-7）：写成类常量，并配简明备注说明游戏机制或实测来源，例如 `R_ANIMATION = 1.8  # 视频实测 R 演出 1.8s`。
 
 ## 10. 按日志和视频迭代
 

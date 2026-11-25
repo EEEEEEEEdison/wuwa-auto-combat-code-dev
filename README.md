@@ -1,64 +1,63 @@
-# okwwcharcode
+# WWACCD（wuwa-auto-combat-code-dev）
 
-用于 [ok-wuthering-waves](https://github.com/ok-oldking/ok-wuthering-waves)（ok-ww，鸣潮自动战斗脚本）的角色代码开发 Skill。
-仓库名为 `okww-charcode-dev`，安装后的 Skill 名为 `okwwcharcode`。
+用于 [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK)（鸣潮自动战斗与日常任务工具）的队伍角色代码开发 Skill。
+仓库名为 `wuwa-auto-combat-code-dev`，简称 `WWACCD`，安装后的 Skill 名为 `wwaccd`。
 输入文字作战轴、教程视频或已有代码，交付工坊配队代码和 zip。
-也支持根据实测日志与录屏修改角色代码。
+也支持根据实测日志、决策追踪与录屏修改角色代码。
 也可直接测试已有角色代码的战斗逻辑，不必先生成新代码。
 
-项目按工作流分为总入口 `okwwcharcode`、六个阶段 Skill、日志 Skill `logging`、MCP 辅助 Skill `mcp` 和知识提议 Skill `proposal`。
+项目按工作流分为总入口 `wwaccd`、六个阶段 Skill、日志 Skill `logging`、MCP 辅助 Skill `mcp` 和知识提议 Skill `proposal`。
 [总入口 SKILL.md](SKILL.md) 按任务和已有产物选择阶段。
 各阶段共用证据、代码、时间测量和验收规则。
 已有确认仍适用时，直接沿用；缺少前提时，返回对应阶段补齐。
-版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v0.7.0`。各版本的变化见 [版本记录](#版本记录)。
+版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.0.0`。各版本的变化见 [版本记录](#版本记录)。
 普通开发只读取随版本提供的知识；知识维护由独立入口处理。
 
 ## 准备
 
 - Agent 宿主：Claude Code、pi，或支持 Agent Skills 的其他宿主。
 - Git：按版本标签安装。
-- ok-ww：本机已安装。Skill 用其运行目录 `working` 查框架源码、显示名和 zip 校验器。
-- Python：ok-ww 自带的 `python.exe`。视频处理需能 `import cv2`。
-- ok-ww 上游仓库的本地克隆：收集角色代码基线。
+- WWisnotOK：本机已安装或已构建。Skill 用其 `strategy_host/` 查策略基线、`assets/characters.json` 查角色表，并用 `strategy_host/validate.py` 校验代码。
+- Python：WWisnotOK 自带的 `runtime/python/python.exe`（Python 3.12，已含 `cv2`）。
 - gh：可选。知识反馈时可由 Agent 安装，见 [用 gh 自动反馈](#用-gh-自动反馈)。
 
-所选阶段需要本机路径且尚未记录时，Agent 会询问，并保存在工作区根目录的 `okwwcharcode.local.md`。
+所选阶段需要本机路径且尚未记录时，Agent 会询问，并保存在工作区根目录的 `wwaccd.local.md`。
 
 ## 安装
 
 GitHub 的正式版本标签固定指向对应提交。
-例如，“安装 0.7.0 版本”表示安装 `v0.7.0` 标签的内容。
+例如，“安装 1.0.0 版本”表示安装 `v1.0.0` 标签的内容。
 安装不依赖专用 zip，不能用默认分支代替指定版本。
 
 可向 Agent 提出：
 
-> 安装 EEEEEEEEdison/okww-charcode-dev 的 v0.7.0。
+> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.0.0。
 > 按该标签的 README 安装，并核对版本、加载路径和重复副本。
 
-安装目录名必须为 `okwwcharcode`，与总入口的 `name` 一致。
+安装目录名必须为 `wwaccd`，与总入口的 `name` 一致。
 全新安装时，目标目录必须不存在。
 以下命令按宿主选择一条，并保留完整目录结构：
 
 ```sh
 # Claude Code
-git clone --branch v0.7.0 --depth 1 https://github.com/EEEEEEEEdison/okww-charcode-dev.git "$HOME/.claude/skills/okwwcharcode"
+git clone --branch v1.0.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
 
 # pi
-git clone --branch v0.7.0 --depth 1 https://github.com/EEEEEEEEdison/okww-charcode-dev.git "$HOME/.pi/agent/skills/okwwcharcode"
+git clone --branch v1.0.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
 ```
 
-其他宿主克隆到宿主的 Skill 目录，目录名同样用 `okwwcharcode`。
+其他宿主克隆到宿主的 Skill 目录，目录名同样用 `wwaccd`。
 
 ### Claude Code
 
 仓库含 `.claude-plugin/plugin.json`。
-新开会话后，Claude Code 把安装目录加载为插件 `okwwcharcode@skills-dir`：
+新开会话后，Claude Code 把安装目录加载为插件 `wwaccd@skills-dir`：
 
-- 总入口注册为 `okwwcharcode`；
-- 六个阶段、日志 Skill、MCP 辅助 Skill `mcp` 和知识提议 Skill 注册为 `okwwcharcode:<阶段名>`。
+- 总入口注册为 `wwaccd`；
+- 六个阶段、日志 Skill、MCP 辅助 Skill `mcp` 和知识提议 Skill 注册为 `wwaccd:<阶段名>`（共 9 个子 Skill，加总入口共 10 个 `SKILL.md`）。
 
 该方式不经过 marketplace。
-运行 `claude plugin details okwwcharcode@skills-dir` 核对，结果应列出 9 个 Skill。
+运行 `claude plugin details wwaccd@skills-dir` 核对加载状态。
 
 ### pi
 
@@ -69,7 +68,7 @@ pi 扫描到含 `SKILL.md` 的目录后便停止递归。
 ```json
 {
   "skills": [
-    "~/.pi/agent/skills/okwwcharcode/skills"
+    "~/.pi/agent/skills/wwaccd/skills"
   ]
 }
 ```
@@ -87,30 +86,30 @@ pi 扫描到含 `SKILL.md` 的目录后便停止递归。
 
 ### 已有安装与升级
 
-0.0.1 的安装目录名为 `okww-charcode-dev`，0.1.0 起改为 `okwwcharcode`。
+`0.1.0–0.7.0` 的安装目录名为 `okwwcharcode`（`0.0.1` 为 `okww-charcode-dev`），`1.0.0` 起改名为 `wwaccd`。
 旧目录留在 Skill 目录时，宿主会同时加载新旧两份。
 
 先核对旧安装的实际路径、链接目标及未提交改动。
-从 0.0.1 升级时：
+从旧版升级时：
 
-1. 将旧目录完整移到宿主不扫描的位置，例如 `~/.claude/okww-charcode-dev-v0.0.1`。
-2. 按全新安装步骤安装到 `okwwcharcode`。
-3. pi 的 `settings.json` 中，把 `.../okww-charcode-dev/skills` 改为 `.../okwwcharcode/skills`。
+1. 将旧目录完整移到宿主不扫描的位置，例如 `~/.claude/okwwcharcode-v0.7.0`。
+2. 按全新安装步骤安装到 `wwaccd`。
+3. pi 的 `settings.json` 中，把 `.../okwwcharcode/skills` 改为 `.../wwaccd/skills`。
 
 不得删除或覆盖旧安装中的用户改动。
-目录名已是 `okwwcharcode` 且为干净的 Git 仓库时，在实际仓库中切换版本：
+目录名已是 `wwaccd` 且为干净的 Git 仓库时，在实际仓库中切换版本：
 
 ```sh
-git fetch origin tag v0.7.0 --no-tags
-git switch --detach v0.7.0
+git fetch origin tag v1.0.0 --no-tags
+git switch --detach v1.0.0
 ```
 
 安装后核对：
 
-- `HEAD` 与 `refs/tags/v0.7.0^{commit}` 指向同一提交；
-- 实际安装目录中的 `VERSION` 为 `0.7.0`；
+- `HEAD` 与 `refs/tags/v1.0.0^{commit}` 指向同一提交；
+- 实际安装目录中的 `VERSION` 为 `1.0.0`；
 - `git status --porcelain --untracked-files=all` 没有输出；
-- 宿主加载的是该安装目录，不存在同名旧副本。
+- 宿主加载的是该安装目录，不存在同名或旧名副本。
 
 更新到其他版本时，显式指定新的标签，并重复核对。
 已发布标签不得移动；修复通过新版本发布。
@@ -119,29 +118,29 @@ git switch --detach v0.7.0
 
 | 宿主 | 总入口 | 阶段与日志 Skill |
 |---|---|---|
-| Claude Code | `/okwwcharcode` | `/okwwcharcode:materials`、`/okwwcharcode:logging` 等 |
-| pi | `/skill:okwwcharcode` | 按 [pi 安装](#pi) 注册后，用 `/skill:materials`、`/skill:logging` 等 |
-| 其他宿主 | 按宿主的 Skill 命令调用 `okwwcharcode` | 总入口读取 `skills/<阶段名>/SKILL.md` |
+| Claude Code | `/wwaccd` | `/wwaccd:materials`、`/wwaccd:logging` 等 |
+| pi | `/skill:wwaccd` | 按 [pi 安装](#pi) 注册后，用 `/skill:materials`、`/skill:logging` 等 |
+| 其他宿主 | 按宿主的 Skill 命令调用 `wwaccd` | 总入口读取 `skills/<阶段名>/SKILL.md` |
 
 不确定从哪个阶段开始时，调用总入口，由总入口按已有产物选择阶段。
-在 Claude Code 中，总入口用 Skill 工具切换到 `okwwcharcode:<阶段名>`。
+在 Claude Code 中，总入口用 Skill 工具切换到 `wwaccd:<阶段名>`。
 显示当前 Skill 的状态栏，例如 ccstatusline 的 skills 组件，随之显示所在阶段。
 直接描述需求时，宿主也可按 Skill 描述自动调用。
 
 请求示例：
 
-- `/okwwcharcode 把这个视频的作战轴做成工坊配队：<视频链接>`：从素材获取开始，依次推进到验证交付。
-- `/okwwcharcode 文字轴如下，视频在 <路径>：<文字轴>`：素材齐全时从轴解析开始。
-- `/okwwcharcode:implementation 修改 <角色 .py> 的 <函数>：<改法与依据>`：局部修改，从代码实现开始。
-- `/okwwcharcode:iteration <队名> skilltest-v<N> 的实测日志在 <路径>，<现象>`：实测迭代，按根因退回对应阶段。
-- `/okwwcharcode 测试 <代码路径> 在 <队伍与关卡> 中的 <战斗行为>`：直接测试，由 Agent 准备场景并采证。
-- `/okwwcharcode:logging 检查 <角色 .py> 的日志`：单独的日志任务。
-- `/okwwcharcode:proposal <队名> skilltest-v<N>`：把本案可入卡的发现整理成知识提议。
+- `/wwaccd 把这个视频的作战轴做成工坊配队：<视频链接>`：从素材获取开始，依次推进到验证交付。
+- `/wwaccd 文字轴如下，视频在 <路径>：<文字轴>`：素材齐全时从轴解析开始。
+- `/wwaccd:implementation 修改 <角色 .py> 的 <函数>：<改法与依据>`：局部修改，从代码实现开始。
+- `/wwaccd:iteration <队名> skilltest-v<N> 的实测日志在 <路径>，<现象>`：实测迭代，按根因退回对应阶段。
+- `/wwaccd 测试 <代码路径> 在 <队伍与关卡> 中的 <战斗行为>`：直接测试，由 Agent 准备场景并采证。
+- `/wwaccd:logging 检查 <角色 .py> 的日志`：单独的日志任务。
+- `/wwaccd:proposal <队名> skilltest-v<N>`：把本案可入卡的发现整理成知识提议。
 
 检查日志调用：
 
 ```text
-<ok-ww python.exe> -I -B scripts/check_logs.py <角色 .py> [<角色 .py> ...]
+<WWisnotOK python.exe> -I -B scripts/check_logs.py <角色 .py> [<角色 .py> ...]
 ```
 
 ### 工作区
@@ -150,7 +149,7 @@ git switch --detach v0.7.0
 
 ```text
 <工作区>/<队名>/
-  media/           原视频、音频或字幕、info.md、截图、取证脚本
+  media/           原视频、音频或字幕、info.md、截图、取证脚本、归档的实测报告
   skilltest-v<N>/  timeline.json、baseline.md、notes.md、角色代码、检查文件、team.json、README.md、zip
   proposals/       知识提议文件
 ```
@@ -167,42 +166,35 @@ git switch --detach v0.7.0
 | [时序建模](skills/timeline/SKILL.md) | `timeline` | 标记输入、状态变化和切人事件，测量参考耗时，定稿验收目标 | `timeline.json`、参考耗时表、验收目标、G2 结果 |
 | [代码实现](skills/implementation/SKILL.md) | `implementation` | 选用框架 API，实现动作、判据与交场链 | 角色代码、`verify_chain.py`、实现说明 |
 | [验证交付](skills/delivery/SKILL.md) | `delivery` | 定向检查代码，校验并打包工坊文件 | 检查结果、zip、README、待实测项 |
-| [实测迭代](skills/iteration/SKILL.md) | `iteration` | 测试已有代码，或对照日志和录屏定位差异，修改并复验 | 测试证据、差异表、根因、下一版或验收记录 |
+| [实测迭代](skills/iteration/SKILL.md) | `iteration` | 测试已有代码，或对照日志、决策追踪与录屏定位差异，修改并复验 | 测试证据、差异表、根因、下一版或验收记录 |
 
 整队生成按上述顺序推进。
 局部修改可从代码实现或实测迭代进入。
-已有待测代码与测试目标，或有可定位版本的日志或录屏时，可从实测迭代进入。
+已有待测代码与测试目标，或有可定位版本的日志、决策追踪或录屏时，可从实测迭代进入。
 直接测试已有代码不必先补文字轴或整队时序。
 局部任务只补受影响的依据和验证，不必重建整队时序。
 
 [日志 Skill](skills/logging/SKILL.md)（`logging`）跨阶段使用：代码实现时写日志，验证交付时用 `scripts/check_logs.py` 检查，实测迭代时按日志定位卡点。
 
-[MCP Skill](skills/mcp/SKILL.md)（`mcp`）通过 ok-ww MCP 全自动实测。
-Agent 把 `templates/mcp/` 的 Task 模板复制到工作区，用 `run_task` 依次提交：
+[MCP Skill](skills/mcp/SKILL.md)（`mcp`）通过 WWisnotOK MCP 实测与采证。
+连接由 `WWisnotOK.exe --mcp` 启动的本机 MCP 服务（默认端口 `8766`，配置在 `%LOCALAPPDATA%\WWisnotOK\mcp\connection.json`）：
 
-- `preflight.py`：从登录页、菜单或矩阵区域回到大世界。
-- `team_import.py`：确认导入入口（宿主或插件的角色代码页签），导入工坊 zip，备份旧代码，读回核对。
-- `matrix_nav.py`：从大世界或结算页导航到终焉矩阵，按 team.json 找到用户编好的测试队伍，不改编队，不保存成绩。
-- `matrix_run.py`：核对编队，交互回音之钥开战，切开场角色并锁敌，自动战斗，实时录像。
-
-`scripts/mcp_report.py` 汇总日志和技能结果，并给每个问题行配录像帧。
-用户授权自主迭代时，Agent 在上限内重复“实测 → 分析 → 改代码 → 导入”。
-连续 2 局通过的版本才交给用户看录像。
+- 用 `get_capabilities`、`get_state` 核对版本、画面和执行权；
+- 用 `set_decision_tracing(enabled=true, capture_frames=true)` 录制切人原因、协奏证据、动作耗时和关键帧 PNG；
+- 用 `reload_strategies` 热重载已修改代码，用 `start_routine("matrix", config)` 执行终焉矩阵或用 `run_task` 执行定向探测脚本；
+- 用 `scripts/mcp_report.py` 汇总 `run.log`、决策追踪 `events.jsonl` 与 `strategy-versions.json`，输出节点链、技能结果、问题行与决策帧索引。
 
 本 Skill 有三种用法：
 
 | 用法 | 迭代依据 |
 |---|---|
-| 从头制作 | 参考视频；MCP 报告作为参考 |
+| 从头制作 | 参考视频；MCP 报告与决策追踪作为参考 |
 | 提交 zip 只测稳定性 | 不迭代 |
-| 提交 zip 按 MCP 结果迭代 | MCP 报告的问题行；没有参考视频，耗时未验证 |
+| 提交 zip 按 MCP 结果迭代 | MCP 报告的问题行与决策追踪；没有参考视频，耗时未验证 |
 
 开场角色写在 team.json 的 `description` 里，格式为“一号位<中文名>”。
-测试前，用户须把测试队伍编进矩阵，1 号位放开场角色。
-
-前提是 ok-ww 正式版已开启 MCP，并以管理员身份启动。
-已实机验证的场景只有终焉矩阵，见 [MCP 实测指引](references/mcp-testing.md)。
-其他场景需按当前截图补导航模板，未实机验证前不得称为全自动可用。
+前提是 WWisnotOK 已开启 MCP（游戏以管理员身份运行时，WWisnotOK 也须以管理员身份运行）。
+详细接口、边界与操作步骤见 [MCP 实测指引](references/mcp-testing.md)。
 
 [知识提议 Skill](skills/proposal/SKILL.md)（`proposal`）在实测迭代后使用，把可入卡的发现整理成提议。经用户同意后，提议反馈给维护者，见 [贡献知识](#贡献知识)。
 
@@ -240,11 +232,11 @@ gh 已安装但未登录时，该选项名为“登录 gh 后反馈”，跳过�
 gh 登录后的最低权限为 `repo`、`read:org` 和 `gist`，能读写本账号的仓库。
 令牌存在系统凭据管理器中。撤销时运行 `gh auth logout`，或在 GitHub 的 Settings → Applications 撤销 GitHub CLI 的授权。
 
-用户有该选项而改选浏览器或邮件时，工作区的 `okwwcharcode.local.md` 记下 `gh 引导：不再推荐`，之后不再提供。删掉这一行即可恢复。
+用户有该选项而改选浏览器或邮件时，工作区的 `wwaccd.local.md` 记下 `gh 引导：不再推荐`，之后不再提供。删掉这一行即可恢复。
 不提交提议也可先安装并登录：
 
 ```text
-<ok-ww python.exe> -I -B scripts/submit_proposal.py --setup-gh
+<WWisnotOK python.exe> -I -B scripts/submit_proposal.py --setup-gh
 ```
 
 ## 信息如何贯穿流程
@@ -286,7 +278,7 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 ## 知识维护
 
-角色代码开发仍可根据日志与录屏迭代队伍代码。
+角色代码开发仍可根据日志、决策追踪与录屏迭代队伍代码。
 新证据与知识冲突时，先记录在用户工作区。
 普通开发流程不自动补卡、不发起补卡确认、不改写安装目录。
 可入卡的发现按 [贡献知识](#贡献知识) 反馈给维护者。
@@ -295,9 +287,9 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 维护源码保存在 `maintainer/`，随仓库源码可见。
 该目录独立于六阶段的 `skills/`，默认安装不注册维护 Skill。
 维护者明确需要补卡或修正规则时，可单独加载
-[知识维护 Skill](maintainer/okww-knowledge-maintenance/SKILL.md)。
+[知识维护 Skill](maintainer/wwaccd-knowledge-maintenance/SKILL.md)。
 在 pi 中，可将该文件的实际路径追加到 `settings.json` 的 `skills` 数组。
-运行 `/reload` 后，手动调用 `/skill:okww-knowledge-maintenance`。
+运行 `/reload` 后，手动调用 `/skill:wwaccd-knowledge-maintenance`。
 该 Skill 设置 `disable-model-invocation: true`，仅供显式调用。
 审核后的知识随新版本交付，旧版本保持原内容。
 
@@ -306,17 +298,17 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 | 路径 | 内容 |
 |---|---|
 | [VERSION](VERSION) | 发布版本号；对应 `v<版本号>` 标签 |
-| [.claude-plugin/plugin.json](.claude-plugin/plugin.json) | Claude Code 插件清单；阶段注册为 `okwwcharcode:<阶段名>` |
+| [.claude-plugin/plugin.json](.claude-plugin/plugin.json) | Claude Code 插件清单；阶段注册为 `wwaccd:<阶段名>` |
 | [SKILL.md](SKILL.md) | 总入口、阶段路由、工作区与提问约定 |
 | `skills/*/SKILL.md` | 六个阶段、日志、MCP 和知识提议 Skill 的输入、任务、交付与退回条件 |
-| [skills/mcp/SKILL.md](skills/mcp/SKILL.md) | 通过 ok-ww MCP 全自动实测与取证 |
+| [skills/mcp/SKILL.md](skills/mcp/SKILL.md) | 通过 WWisnotOK MCP 实测、决策追踪与采证 |
 | [guides/evidence.md](guides/evidence.md) | 信息获取、证据、缺项分级和阶段交接 |
 | [guides/timing.md](guides/timing.md) | 计时口径、参考耗时、差值和时间验收 |
 | [guides/step1.md](guides/step1.md) | 素材、文字轴确认、画面取证与事件标记 |
-| [guides/baseline.md](guides/baseline.md) | 上游、工坊和历史代码基线 |
+| [guides/baseline.md](guides/baseline.md) | WWisnotOK 内置类、在线工坊和历史代码基线 |
 | [guides/timeline.md](guides/timeline.md) | 时序字段、示例和 G2 清单 |
 | [guides/step2.md](guides/step2.md) | 节点实现、定向检查和打包交付 |
-| [guides/iterate.md](guides/iterate.md) | 日志录像比较、根因、修改和复验 |
+| [guides/iterate.md](guides/iterate.md) | 日志、决策追踪与录像比较、根因、修改和复验 |
 | [knowledge/basics.md](knowledge/basics.md) | 游戏操作、记号和画面识别知识 |
 | [knowledge/cards/README.md](knowledge/cards/README.md) | 语义卡读取、适用条件与知识使用边界 |
 | [knowledge/frames/README.md](knowledge/frames/README.md) | 角色帧数据：动作帧数、中断优先级、离场规则和输入缓存 |
@@ -324,17 +316,17 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 | [maintainer/build_frames.py](maintainer/build_frames.py) | 从《鸣潮数据汇总》xlsx 生成 `knowledge/frames/` |
 | [rules.md](rules.md) | 代码规则、API 选择、日志和循环轴约束 |
 | [references/basechar-api.md](references/basechar-api.md) | `BaseChar` API 与成员索引 |
-| [references/task-api.md](references/task-api.md) | `self.task.*` 与战斗检查 |
+| [references/task-api.md](references/task-api.md) | `self.task.*`（`TaskProxy` / C# `CombatEngine`）与战斗检查 |
 | [references/self-impl-patterns.md](references/self-impl-patterns.md) | 框架函数不足时的实现经验 |
 | [references/logging.md](references/logging.md) | 英文日志模板、词表与参考实现 |
-| [references/mcp-testing.md](references/mcp-testing.md) | MCP 实测前提、模板、矩阵页面、结果判读和故障处理 |
-| [references/workshop.md](references/workshop.md) | 工坊格式、循环轴骨架与案例 |
+| [references/mcp-testing.md](references/mcp-testing.md) | WWisnotOK MCP 实测前提、接口、决策追踪、结果判读和故障处理 |
+| [references/workshop.md](references/workshop.md) | WWisnotOK 工坊 ZIP 格式、循环轴骨架与案例 |
 | [templates/verify_chain.py](templates/verify_chain.py) | 静态交场链检查模板 |
 | [templates/knowledge-proposal.md](templates/knowledge-proposal.md) | 知识提议模板 |
-| [templates/mcp/](templates/mcp) | MCP 实测 Task 模板：回大世界、导入、矩阵导航、单局实测，参数在 `mcp_test.json` |
-| [scripts/pack_team.py](scripts/pack_team.py) | 打包 zip，并调用 ok-ww 的校验器 |
+| [templates/mcp/](templates/mcp) | WWisnotOK MCP 实测辅助脚本与配置模板 |
+| [scripts/pack_team.py](scripts/pack_team.py) | 打包 zip，并调用 WWisnotOK `strategy_host/validate.py` 校验 |
 | [scripts/check_logs.py](scripts/check_logs.py) | 按 logging.md 的词表和规则检查日志调用 |
-| [scripts/mcp_report.py](scripts/mcp_report.py) | 汇总一次 MCP 实测：日志切片、技能结果、问题行及录像帧 |
+| [scripts/mcp_report.py](scripts/mcp_report.py) | 汇总一次 WWisnotOK 实测：解析 `run.log`、决策追踪 `events.jsonl` 与问题行 |
 | [scripts/submit_proposal.py](scripts/submit_proposal.py) | 检查知识提议，用 gh、浏览器或邮件反馈；可安装并登录 gh |
 
 下载、抽帧和分析脚本按任务编写，放在媒体目录或 scratchpad。
@@ -342,48 +334,40 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 ## 代码基线
 
-现有 API 与行号引用基于：
+现有 API 与实现引用基于：
 
-- ok-ww 上游 master `2243d465`（2026-10-05）；
-- ok-script `v2.0.8`。
+- [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`（`strategy_host` 策略接口适配自 `v3.8.0`，通用采集/匹配/OCR/冷却/协奏/切人调度由 C# 引擎执行）；
+- 内置 Python `3.12`（含 `cv2`）。
 
-实际开发必须核对当前框架源码与所用版本。
-上游变化后，按 rules.md 0-1 在案例中记录差异和正确来源。
-
-## 与上游角色接入 Skill 的关系
-
-上游 `.agents/skills/ok-ww-characters` 覆盖新角色接入流程，包括：
-
-- 在 `src/char/CharFactory.py` 注册；
-- `Labels` 特征名；
-- 技能描述的中英术语对照。
-
-本项目负责作战轴、角色实现、工坊配队和实测迭代。
-上游 `2243d465` 的 Skill 示例使用了不存在的 `Priority` 和 `do_get_switch_priority`。
-该版源码实际使用 `SwitchPriority` 和 `get_switch_priority`。
-对应说明见 [BaseChar API](references/basechar-api.md)。
+实际开发必须核对当前 WWisnotOK 源码与所用版本。
+框架变化后，按 rules.md 0-1 在案例中记录差异和正确来源。
 
 ## 版本记录
 
+- 1.0.0：
+  - 项目更名为 **WWACCD（wuwa-auto-combat-code-dev）**，Skill 名改为 `wwaccd`，本机配置改名为 `wwaccd.local.md`，知识提议标记改为 `<!-- wwaccd-proposal v1 -->`。
+  - 彻底切换为 **WWisnotOK** 单一基底，移除旧 `ok-ww`（`CustomCharLoader`、`CharacterCodeTab`、`ok-script` 与内置角色 PR 流程）依赖。
+  - `scripts/pack_team.py` 改为对接 `WWisnotOK` 的 `assets/characters.json` 与 `strategy_host/validate.py` 校验器；`guides/baseline.md` 切换为 `WWisnotOK/strategy_host/src/char/` 与 `wwlibrary` 在线工坊。
+  - 更新 `rules.md` 与 `references/*` 同步 WWisnotOK 架构（含 `continues_click_until`、`sleep` 恢复 `skip_combat_check`、`SwitchSelection` 治疗锁死回退逻辑、标准 `logging` 转发与 `decision-traces`）。
+  - 重构 MCP 实测指引、模板与 `scripts/mcp_report.py`，对接 WWisnotOK MCP（`get_capabilities`、`set_decision_tracing`、`reload_strategies`、`start_routine("matrix")`、`run_task`）并直接解析 ISO-8601 `run.log` 与 `events.jsonl`。
+  - `templates/verify_chain.py` 支持多前缀循环轴（如变轴 `c`、末轮 `z`）与分支边；仓库补充 `.gitignore`。
 - 0.7.0：
-  - MCP 导入模板 `team_import.py` 兼容宿主页签和插件页签两种入口。ok-ww v3.7.15 起宿主移除“角色代码”页签，由插件 `character_code_tab` 提供。两种入口都没有时报 `no import entry`，提示安装插件或换用 v3.7.14 及以前的版本。
-  - `mcp-testing.md` 新增导入入口的版本表和“窗口不得最小化”前提。`baseline.md` 新增插件下的工坊主机说明，放行 `cfokwwchar.ok-script.com`。
-  - 验证范围：插件入口已在 v3.7.17 实机导入，宿主入口只跑过桩测试，矩阵开战步骤未在 v3.7.17 实跑。
+  - MCP 导入模板 `team_import.py` 兼容宿主页签和插件页签两种入口。
+  - `mcp-testing.md` 新增导入入口版本表和“窗口不得最小化”前提。
 - 0.6.0：
-  - 知识候选改为按 issue 登记：每轮新增或改过 `status`、`answer` 的 issue 都要登记，是否入卡写在处理状态里；新增“待验证”状态和清单开头的“已登记到”。知识提议先按 id 对比两版 issues，补登漏项再挑候选。
-  - `rules.md` 新增 1-9：用 `liberation_available()` 等 R 时，冷却数字单帧漏读会读成就绪，读到就绪后取下一帧确认。新增 1-10：按 R 无演出时在等待上限内重按，不直接跳过。
-  - 语义卡：弗洛洛卡改强化提示判据（E 格紫环加环外条件），R 前等待改为约 0.7s；坎特蕾拉卡补粉圈判据；今汐卡新增“没变奏入场时补 E2”。
+  - 知识候选改为按 issue 登记；`rules.md` 新增 1-9、1-10；更新弗洛洛、坎特蕾拉、今汐语义卡。
 - 0.5.0：
-  - 新增角色帧数据知识库 `knowledge/frames/`。数据由 `maintainer/build_frames.py` 从《鸣潮数据汇总》生成，各阶段按帧数据核对动作帧数。
-  - `basics.md` 新增 K-10 空中切人、K-11 在场太短时切人不变奏、H-6 演出期间 HUD 隐藏。
-  - 吸收 okww-axis 中经源码或帧数据核实的 8 条规则。
-  - 实测迭代新增跨版本知识候选清单，并更新今弗坎队的语义卡。
-  - MCP 实测修复录像丢帧，并新增录像开关 `record.enabled`。ok-ww 要求改为 v3.7.14-beta.2 及以上。
-- 0.4.0：MCP Skill 改为全自动实测，新增 `templates/mcp/` 模板和 `scripts/mcp_report.py`，已在终焉矩阵实机验证；实测迭代增加自主迭代上限和三种用法。矩阵导航按 team.json 查找测试队伍。细则目录 `harness/` 改名为 `guides/`，版本目录改为 `skilltest-v<N>`，本机配置改名为 `okwwcharcode.local.md`。
-- 0.3.0：知识提议在 gh 未安装或未登录时提供“安装 gh 后反馈”，由 `submit_proposal.py --setup-gh` 安装并登录 gh。
-- 0.2.0：新增知识提议 Skill `proposal`。实测得到可入卡的发现时起草提议，经用户同意后用 gh、预填 Issue 页面或邮件反馈给维护者。
-- 0.1.0：总入口改名为 `okwwcharcode`，拆分出六个阶段 Skill；新增日志 Skill 和 `scripts/check_logs.py`；语义卡改为精简写法。Claude Code 以插件形式注册阶段。
-- 0.0.1：首个版本，Skill 名为 `okww-charcode-dev`。
+  - 新增角色帧数据知识库 `knowledge/frames/`；`basics.md` 新增 K-10、K-11、H-6；新增跨版本知识候选清单。
+- 0.4.0：
+  - MCP Skill 改为全自动实测，细则目录改为 `guides/`，版本目录改为 `skilltest-v<N>`。
+- 0.3.0：
+  - 知识提议支持 `submit_proposal.py --setup-gh` 安装并登录 gh。
+- 0.2.0：
+  - 新增知识提议 Skill `proposal`。
+- 0.1.0：
+  - 拆分六个阶段 Skill，新增日志 Skill 和 `scripts/check_logs.py`，Claude Code 以插件形式注册阶段。
+- 0.0.1：
+  - 首个版本。
 
 ## 许可证
 

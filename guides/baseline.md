@@ -1,6 +1,6 @@
 # 代码基线：动手前先看前人怎么写
 
-生成或修改某个角色的代码之前，先把这个角色已有的写法收集起来，来源有三处：上游内置类、ok-ww 在线工坊里所有包含这个角色的代码、用户自己的历史版本。从中借用状态识别、时长和写法技巧，并避开已知的坑。新结论及与卡片的冲突记录在本案工作区。
+生成或修改某个角色的代码之前，先把这个角色已有的写法收集起来，来源有三处：WWisnotOK 内置策略类、在线工坊（wwlibrary）里包含这个角色的代码、用户自己的历史版本。从中借用状态识别、时长和写法技巧，并避开已知的坑。新结论及与卡片的冲突记录在本案工作区。
 
 ## 1 什么时候做
 
@@ -15,22 +15,20 @@
 |---|---|---|
 | 语义卡 | `knowledge/cards/<类名>_C<共鸣链>.md`；分别核对作者链与用户链，缺卡时不得用 C0 直接替代 | 本 Skill 的 VERSION |
 | 帧数据 | `knowledge/frames/<类名>.md`；名称与文件的对应见 `knowledge/frames/_index.md` | 文件开头的数据版本 |
-| 上游内置类 | 在本地配置的上游仓库里先 `git fetch upstream`，再 `git show upstream/master:src/char/<类名>.py`。没有这个文件就记“内置没有” | upstream/master 的提交号 |
+| WWisnotOK 内置类 | 读取 `<WWisnotOK 目录>/strategy_host/src/char/<类名>.py`（漂泊者类名为 `Rover`）。没有这个文件就记“内置没有” | WWisnotOK 版本号或提交号 |
 | 在线工坊 | 见下 | 每条代码的 `name`、`author`、`version`、`modifiedAt` |
-| 用户的历史版本 | 查本地配置的历史版本目录和工作区里已有的队。每个含这个角色的队取最新版本，早期版本只在对比时看 | 队名、版本目录 |
+| 用户的历史版本 | 查 `wwaccd.local.md` 配置的历史版本目录、WWisnotOK 数据目录的 `teams/` 和工作区里已有的队。每个含这个角色的队取最新版本，早期版本只在对比时看 | 队名、版本目录 |
 
-**在线工坊**：ok-ww 角色代码页上的“工坊”按钮用的就是这套接口，实现在运行目录 `src/gui/CharacterCodeTab.py` 的 `fetch_all_workshop_teams` 和 `_import_workshop_code`。不需要登录。
+**在线工坊**：WWisnotOK “工坊”页使用的接口实现在 `src/WWisnotOK/Services/WorkshopService.cs`。不需要登录。默认工坊根地址保存在用户数据目录 `settings.json` 的 `workshop_url`，默认为 `https://eeeeeeeedison.github.io/wwlibrary`。
 
-ok-ww v3.7.15 起，角色代码页由插件 `character_code_tab` 提供。`CharacterCodeTab.py` 的默认主机是 `cfokwwchar.ok-script.com`。插件把主机改成 `configs/character_code_workshop.json` 的 `base_url`，默认是下面第 1 步的主机。第 1 步的主机不通时，改用 `cfokwwchar.ok-script.com`。
-
-1. 不带任何凭据，GET `https://okwwcharcode.ok-script.com/teams.json`。返回的 `teams[].codes[]` 就是全部已上传的代码，每条有 `name`、`author`、`version`、`members`、`downloadUrl`、`rawUrl`、`modifiedAt`。某条缺 `members` 时，用这条代码所在 team 的 `members`。
-2. 筛出 `members` 里含 `<类名>` 的代码，不区分大小写。服务端不能按角色筛选，只能拉全量再过滤。
-3. 逐条下载 `downloadUrl`，没有时用 `rawUrl`。只接受 https，主机必须是 `okwwcharcode.ok-script.com`、`cfokwwchar.ok-script.com` 或 `raw.githubusercontent.com`。
+1. 不带任何凭据，GET `<workshop_url>/teams.json`（默认 `https://eeeeeeeedison.github.io/wwlibrary/teams.json`）。返回的 `teams[].codes[]` 是全部已上传的代码，每条有 `name`、`author`、`version`、`members`、`downloadUrl`、`rawUrl`、`modifiedAt`。某条缺 `members` 时，用这条代码所在 team 的 `members`。
+2. 筛出 `members` 里含 `<类名>` 或对应英文显示名的代码，不区分大小写。服务端不能按角色筛选，只能拉全量再过滤。
+3. 逐条下载 `downloadUrl`，没有时用 `rawUrl`。只接受 `https`，主机必须是当前 `workshop_url` 所在主机、`eeeeeeeedison.github.io`、`raw.githubusercontent.com` 或 `github.com`。
 4. 每个 zip 是 `team.json` 加 3 个角色 `.py`。下载到媒体目录的 `workshop\<zip 文件名去掉扩展名>\` 下，每个 zip 用一个新的空目录。只解出 `team.json` 和 `.py`，并按文件名写入，丢掉 zip 里的路径。
 
-工坊代码是别人写的，只能读：不运行、不 import，也不拿去跑 `inspect_team_archive`。处理工坊代码的脚本放在别的目录，用 `python -I` 运行，路径通过参数传入。
+工坊代码是别人写的，只能读：不运行、不 import，也不拿去跑 `strategy_host/validate.py`。处理工坊代码的脚本放在别的目录，用 `python -I` 运行，路径通过参数传入。
 
-有只读调查子代理时（例如 ok-ww 工作区的 `okww-scout`），收集和摘要交给这个子代理做，按 §3 的格式写成文件。主会话只复核文件里引用到的行，核对无误后再使用。
+有只读调查子代理时，收集和摘要可交给子代理按 §3 的格式写成文件。主会话只复核文件里引用到的行，核对无误后再使用。
 
 ## 3 输出 baseline.md
 

@@ -1,9 +1,9 @@
 # [知识提议] <角色或队名>：<N> 条
 
-<!-- okwwcharcode-proposal v1 -->
+<!-- wwaccd-proposal v1 -->
 
-- okwwcharcode 版本：v<版本号>
-- ok-ww 版本：<版本号或提交号>
+- WWACCD 版本：v<版本号>
+- WWisnotOK 版本：<版本号或提交号>
 - 提交即同意按 MIT 许可收录本提议内容。
 
 ## 1 <一句话概括>

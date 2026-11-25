@@ -2,15 +2,13 @@
 
 **基线**
 
-| 类 | 文件 | 版本 |
+| 层 | 文件 | 说明 |
 |---|---|---|
-| `BaseCombatTask` | `src/task/BaseCombatTask.py` | 上游 `2243d465` |
-| `CombatCheck` | `src/combat/CombatCheck.py` | 上游 `2243d465` |
-| `BaseWWTask` | `src/task/BaseWWTask.py` | 上游 `2243d465` |
-| `ExecutorOperation` / `FindFeature` / `BaseTask` | `ok/task/task.py` | ok-script `v2.0.8` |
-| `TaskExecutor` | `ok/task/TaskExecutor.py` | ok-script `v2.0.8` |
+| Python 代理层 | `WWisnotOK/strategy_host/bridge.py`（`TaskProxy`） | 角色代码中的 `self.task.*` 经命名管道 RPC 转发到 C# 引擎 |
+| 兼容接口层 | `WWisnotOK/strategy_host/ok/__init__.py` | 提供 `Logger`、`Config`、`BaseTask`、`Box`、`calculate_color_percentage` 等兼容名，不依赖 `ok-script` |
+| C# 战斗引擎 | `WWisnotOK/src/WWisnotOK/Core/CombatEngine.cs`、`CharacterOperations.cs`、`SwitchSelection.cs` | 执行画面采集、模板匹配、OCR、冷却、协奏、切人调度与输入投递 |
 
-继承链：`BaseCombatTask` → `CombatCheck` → `BaseWWTask` → ok-script `BaseTask`，`BaseTask` 再混入 `ExecutorOperation` / `FindFeature`。
+说明：`ctypes.windll.user32.SendInput` 的旧脚本入口由 `bridge.route_native_input` 转入 C#，受执行权和取消检查约束。下文旧版行号仅作历史语义对照，实际行为以当前 WWisnotOK 源码为准（0-1）。
 
 **调用频次**：括号里的“N 次 / M 文件”是 `self.task.<name>` 在上游 `src/char/*.py` 中出现的统计。
 
@@ -53,8 +51,8 @@
 
 | 参数 | 含义 |
 |---|---|
-| `time_out=0` | 使用 `wait_scene_timeout`，ok-ww 未配置时为 **10 秒** |
-| `settle_time=-1` | 使用 `wait_until_settle_time`。ok-ww `config.py:181` 设为 `0`，所以默认**不做 settle**：条件第一次为真就返回 |
+| `time_out=0` | 使用默认场景等待上限（通常为 **10 秒**） |
+| `settle_time=-1` | 默认 **0**，不做 settle：条件第一次为真就返回 |
 | `settle_time>0` | 条件要**连续**为真超过这个时长才返回。settle 期间直接 `continue`，不执行 `post_action`，也不检查超时 |
 
 **返回**：条件的结果（真值），超时返回 `None`。超时还会打一行 info：`wait_until timeout <condition> N seconds`。
@@ -104,7 +102,7 @@
 - 发送前会 `reset_scene()`；
 - 技能键一律用 `self.get_*_key()` 取，不写死（1-2）；
 - 长按例子：`self.task.send_key(self.get_resonance_key(), down_time=1.2)`（`Chisa.py:90`）。
-- `down_time` 期间是**阻塞**的：交互层在按下和松开之间直接 `time.sleep(down_time)`（ok-ww 默认交互方式是 `PostMessage`，见 `config.py:206`；实现在 ok-script `ok/device/interaction_methods/post_message.py:31-35`）。这段时间里不抓帧、不做战斗检查，也不能中途松开。需要按住期间看画面、做战斗检查或按条件松开时，改用 `send_key_down` / `send_key_up`，写成 try/finally（5-4）。
+- `down_time` 期间是**阻塞**的：按下和松开之间不抓帧、不做战斗检查，也不能中途松开。需要按住期间看画面、做战斗检查或按条件松开时，改用 `send_key_down` / `send_key_up`，写成 try/finally（5-4）。
 
 ### send_key_down(key, after_sleep=0) / send_key_up(key, after_sleep=0)
 
@@ -139,7 +137,7 @@
 
 位置：`task.py:346`。调用频次：23 次 / 13 文件。
 
-- 按参考分辨率（ok-ww 统一用 `3840, 2160`）给出坐标，换算成当前分辨率下的 `Box`；
+- 按参考分辨率（通用基准 `3840, 2160`）给出坐标，换算成当前分辨率下的 `Box`；
 - `hcenter=True`：位于 HUD 水平居中区域，在超宽屏上按中心对齐，技能栏、协奏环都这么设置；
 - 例子：`self.task.box_of_screen_scaled(3840, 2160, 2251, 1993, 2311, 2016, name='forte_full', hcenter=True)`（`BaseChar.py:790`）。
 
@@ -357,7 +355,7 @@ task 侧**不写** `char.current_con`。角色代码用 `self.get_current_con()`
 |---|---|
 | `key_config` | 用户键位 dict，例如 `'Jump Key'`、`'Tool Key'`、`'Resonance Key'` |
 | `debug`（property） | 是否为 debug 模式（`main_debug`） |
-| `executor` | ok-script `TaskExecutor`；`executor.current_task` 是当前正在运行的任务 |
+| `executor` | `bridge.py` 的执行器兼容代理（`check_enabled`、`next_frame`、`frame`、`sleep` 等），转发至 C# 引擎 |
 | `log_error(message, exception=None, notify=False, ...)` / `log_info` | 任务级日志，会显示在 GUI 中。**角色代码用 `self.logger`**，不用这两个 |
 | `info_set(key, value)` | 往 GUI 信息面板写值 |
 | `char_config` | 角色配置 |

@@ -1,7 +1,7 @@
 # 知识维护规则
 
 本流程只用于维护者明确要求的仓库知识维护任务。
-入口为 [知识维护 Skill](okww-knowledge-maintenance/SKILL.md)。
+入口为 [知识维护 Skill](wwaccd-knowledge-maintenance/SKILL.md)。
 普通开发流程的知识使用边界见 [语义卡说明](../knowledge/cards/README.md)。
 
 ## 1 范围与来源
@@ -114,14 +114,14 @@
 外部使用者用 [知识提议 Skill](../skills/proposal/SKILL.md) 反馈提议，格式见 [提议模板](../templates/knowledge-proposal.md)。
 提议有两个来源：
 
-- GitHub Issue：标题以 `[知识提议]` 开头，正文含 `<!-- okwwcharcode-proposal v1 -->`。
+- GitHub Issue：标题以 `[知识提议]` 开头，正文含 `<!-- wwaccd-proposal v1 -->`。
 - 邮件附件：维护者把文件放进工作区的 `proposals-inbox/`。
 
 列出和读取 Issue：
 
 ```sh
-gh issue list --repo EEEEEEEEdison/okww-charcode-dev --state open --search "知识提议 in:title"
-gh issue view <编号> --repo EEEEEEEEdison/okww-charcode-dev --comments
+gh issue list --repo EEEEEEEEdison/wuwa-auto-combat-code-dev --state open --search "知识提议 in:title"
+gh issue view <编号> --repo EEEEEEEEdison/wuwa-auto-combat-code-dev --comments
 ```
 
 刚创建的 Issue 可能暂时搜不到。此时去掉 `--search`，按标题筛选。
@@ -144,10 +144,10 @@ xlsx 不得提交到仓库。仓库只保存生成的 Markdown。
 
 拿到新版数据汇总时：
 
-1. 运行生成脚本。ok-ww 自带的 Python 即可，不需要另装依赖：
+1. 运行生成脚本。WWisnotOK 自带的 Python 即可，不需要另装依赖：
 
    ```sh
-   <ok-ww 的 python.exe> -I -B maintainer/build_frames.py <xlsx 路径>
+   <WWisnotOK 的 python.exe> -I -B maintainer/build_frames.py <xlsx 路径>
    ```
 
 2. 脚本报“名称不在 CHAR_FILES、SKIP_CHARS 或 LABELS 中”时，按框架的角色类名补 `CHAR_FILES`。框架没有对应类的名称补进 `SKIP_CHARS`。补完后重新运行。

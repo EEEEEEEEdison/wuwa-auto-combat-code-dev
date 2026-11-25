@@ -1,6 +1,6 @@
 """把知识提议文件反馈给本仓库维护者。
 
-用法（用 ok-ww 自带的 Python，带 -I -B）：
+用法（用 WWisnotOK 自带的 Python，带 -I -B）：
     python.exe -I -B submit_proposal.py <提议 .md> [--method auto|gh|browser|email] [--setup-gh] [--dry-run]
     python.exe -I -B submit_proposal.py --setup-gh [--dry-run]
 
@@ -29,10 +29,10 @@ import threading
 import webbrowser
 from urllib.parse import quote
 
-REPO = 'EEEEEEEEdison/okww-charcode-dev'
+REPO = 'EEEEEEEEdison/wuwa-auto-combat-code-dev'
 EMAIL = '476676559@qq.com'
 TITLE_PREFIX = '# [知识提议] '
-MARKER = '<!-- okwwcharcode-proposal v1 -->'
+MARKER = '<!-- wwaccd-proposal v1 -->'
 CONSENT = '提交即同意按 MIT 许可收录本提议内容。'
 # 未登录时 GitHub 先跳转登录页，链接超过约 7000 字符会返回 500；取 6000 留余量，超出时正文改走剪贴板
 URL_LIMIT = 6000

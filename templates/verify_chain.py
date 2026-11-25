@@ -4,13 +4,17 @@ Compares the chain you designed (EXPECTED) with every literal
     self._force_switch_to(self._find_teammate('X'), 'mode')
 written inside each class's perform_* methods. Run it before every repack.
 
-Axis model: f modes = startup axis (once per fight), s modes = loop axis (repeats, closed).
-Exactly one f->s edge (STARTUP_END) joins them; every edge leaving an s mode must go to an s mode and close the loop.
+Axis model:
+- f modes = startup axis (once per fight).
+- LOOP_PREFIXES (default ('s',), extend to e.g. ('s', 'c', 'z') for variant/end-of-fight axes)
+  = loop/post-startup modes that form a closed graph.
+- Exactly one startup->loop edge (STARTUP_END) joins them; every edge leaving a loop mode must go to
+  a loop mode, and every loop mode must have both an in-edge and an out-edge (closed).
 
 Usage: python verify_chain.py [team_dir]    (default: this script's directory)
 Exit code: 0 = PASS, 1 = FAIL.
 
-Replace FILES / EXPECTED / STARTUP_END / PENDING below with your team's chain.
+Replace FILES / EXPECTED / STARTUP_END / LOOP_PREFIXES / PENDING below with your team's chain.
 After adding a new assertion, break one edge on purpose and confirm the exit code is 1.
 """
 import ast
@@ -19,6 +23,9 @@ import sys
 
 # Class names; each must live in <ClassName>.py inside team_dir.
 FILES = ('Alpha', 'Beta', 'Gamma')
+
+# Mode prefixes treated as loop/post-startup axis (e.g. ('s', 'c', 'z') when using variant/final axes).
+LOOP_PREFIXES = ('s',)
 
 # (source class, source mode, target class, target mode)
 # Startup axis: Alpha f1 -> Beta f1 -> Gamma f1 -> Alpha f2 -> Gamma f2 -> Beta s1
@@ -36,10 +43,14 @@ EXPECTED = [
 
 # Endpoints whose perform_<mode> is not written yet: {('Class', 'mode'), ...}
 PENDING = set()
-# The single f->s edge that ends the startup axis.
+# The single startup->loop edge that ends the startup axis.
 STARTUP_END = ('Gamma', 'f2', 'Beta', 's1')
 
 WIDTH = max(len(name) for name in FILES)
+
+
+def _is_loop(mode):
+    return bool(mode) and mode.startswith(LOOP_PREFIXES)
 
 
 def _target_of(call):
@@ -79,6 +90,7 @@ def main():
     root = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parent
     edges, methods = scan(root)
     ok = True
+    loop_label = '/'.join(LOOP_PREFIXES)
 
     print('=== Hand-offs found in code ===')
     for e in edges:
@@ -94,37 +106,41 @@ def main():
         print(f'  UNEXPECTED {_fmt(e)}')
     ok &= not extra
 
-    print('=== Axis boundary: exactly one f->s edge, s modes form a closed loop ===')
-    f2s = [e for e in edges if not e[1].startswith('s') and e[3] and e[3].startswith('s')]
-    s2s = [e for e in edges if e[1].startswith('s')]
-    loop = [e for e in EXPECTED if e[1].startswith('s')]
+    print(f'=== Axis boundary: exactly one f->{loop_label} edge, {loop_label} modes form a closed loop ===')
+    f2s = [e for e in edges if not _is_loop(e[1]) and _is_loop(e[3])]
+    s2s = [e for e in edges if _is_loop(e[1])]
+    loop = [e for e in EXPECTED if _is_loop(e[1])]
     if f2s == [STARTUP_END]:
-        print(f'  OK  single f->s edge {_fmt(STARTUP_END)} (startup end)')
+        print(f'  OK  single f->{loop_label} edge {_fmt(STARTUP_END)} (startup end)')
     else:
         ok = False
         for e in f2s:
-            print(f'  BAD f->s edge {_fmt(e)} (expected only {_fmt(STARTUP_END)}); startup axis cut short?')
+            print(f'  BAD f->{loop_label} edge {_fmt(e)} (expected only {_fmt(STARTUP_END)}); startup axis cut short?')
         if not f2s:
-            print('  BAD no f->s edge: the startup axis never reaches the loop axis')
+            print(f'  BAD no f->{loop_label} edge: the startup axis never reaches the loop axis')
     if sorted(s2s) == sorted(loop):
-        print(f'  OK  {len(s2s)} edges leaving s modes match EXPECTED')
+        print(f'  OK  {len(s2s)} edges leaving {loop_label} modes match EXPECTED')
     else:
         ok = False
         for e in sorted(set(s2s) - set(loop), key=str):
-            print(f'  BAD extra edge leaving an s mode {_fmt(e)}')
+            print(f'  BAD extra edge leaving a {loop_label} mode {_fmt(e)}')
         for e in sorted(set(loop) - set(s2s), key=str):
-            print(f'  BAD missing edge leaving an s mode {_fmt(e)}')
-    # Closure: every mode entered by an s edge must also leave by an s edge, or the loop breaks there.
+            print(f'  BAD missing edge leaving a {loop_label} mode {_fmt(e)}')
+    bad_loop_dst = [e for e in s2s if not _is_loop(e[3])]
+    for e in bad_loop_dst:
+        ok = False
+        print(f'  BAD {loop_label} edge returns to non-loop mode {_fmt(e)}')
+    # Closure: every mode entered by a loop edge must also leave by a loop edge, or the loop breaks there.
     srcs = {(e[0], e[1]) for e in loop}
     dsts = {(e[2], e[3]) for e in loop}
     if srcs == dsts:
-        print(f'  OK  closed loop: {len(srcs)} s modes, each entered and left once')
+        print(f'  OK  closed loop: {len(srcs)} {loop_label} modes, each entered and left')
     else:
         ok = False
         for n in sorted(dsts - srcs, key=str):
-            print(f'  BAD {n[0]}.{n[1]} has an s in-edge but no s out-edge: the loop breaks here')
+            print(f'  BAD {n[0]}.{n[1]} has a loop in-edge but no loop out-edge: the loop breaks here')
         for n in sorted(srcs - dsts, key=str):
-            print(f'  BAD {n[0]}.{n[1]} has an s out-edge but no s in-edge: unreachable')
+            print(f'  BAD {n[0]}.{n[1]} has a loop out-edge but no loop in-edge: unreachable')
 
     print('=== Target perform_<mode> exists ===')
     for src, src_mode, target, mode in edges:

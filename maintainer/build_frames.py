@@ -2,9 +2,9 @@
 
 维护者拿到新版本数据汇总时运行：
 
-    <ok-ww 的 python.exe> -I -B maintainer/build_frames.py <xlsx 路径>
+    <WWisnotOK 的 python.exe> -I -B maintainer/build_frames.py <xlsx 路径>
 
-只用标准库读取 xlsx，因为 ok-ww 自带的 Python 没有 openpyxl。
+只用标准库读取 xlsx，因为 WWisnotOK 自带的 Python 没有 openpyxl。
 读取的是单元格缓存值；公式错误值按空格处理。
 生成的文件第一行带 GENERATED_MARK，重新生成时只删除带该标记的文件。
 """

@@ -1,6 +1,6 @@
 ---
 name: logging
-description: okwwcharcode 的日志 Skill：ok-ww 角色代码的游戏内日志写法与检查。用于给角色代码或工坊循环轴写 logger / _trace 日志行，选事件、字段、reason 与 info/debug/warning 级别；在长等待前打 wait 行定位卡点；按需加 probe 取证行并在问题查清后删除；交付前用 check_logs.py 检查日志模板、字段词表、耗时字段和不额外读状态。适用于日志模板、字段词表、reason 词表、耗时字段、降级过滤、卡点定位、取证行。
+description: WWACCD 的日志 Skill：WWisnotOK 队伍角色代码的游戏内日志写法与检查。用于给角色代码或循环轴写 logger / _trace 日志行，选事件、字段、reason 与 info/debug/warning 级别；在长等待前打 wait 行定位卡点；按需加 probe 取证行并在问题查清后删除；交付前用 check_logs.py 检查日志模板、字段词表、耗时字段和不额外读状态。适用于日志模板、字段词表、reason 词表、耗时字段、降级处理、卡点定位、取证行。
 ---
 
 # 日志
@@ -9,7 +9,7 @@ description: okwwcharcode 的日志 Skill：ok-ww 角色代码的游戏内日志
 
 ## 输入
 
-要写或要改日志的角色代码，以及它所属的模式：内置或工坊；工坊模式下是否为循环轴。
+要写或要改日志的 WWisnotOK 队伍角色代码，以及它是否使用循环轴骨架。
 
 ## 执行
 
@@ -24,7 +24,7 @@ description: okwwcharcode 的日志 Skill：ok-ww 角色代码的游戏内日志
 9. 交付前对本次改动的角色文件运行检查：
 
    ```text
-   <ok-ww python.exe> -I -B scripts/check_logs.py <角色 .py> [<角色 .py> ...]
+   <WWisnotOK python.exe> -I -B scripts/check_logs.py <角色 .py> [<角色 .py> ...]
    ```
 
 ## 输出与通过条件

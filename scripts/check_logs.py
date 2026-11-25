@@ -1,6 +1,6 @@
 """按 references/logging.md 的词表和规则检查角色代码里的日志调用。
 
-用法（用 ok-ww 自带的 Python，带 -I -B）：
+用法（用 WWisnotOK 自带的 Python，带 -I -B）：
     python.exe -I -B check_logs.py <角色 .py> [<角色 .py> ...]
 
 - 词表从本仓库 references/logging.md 的事件、字段、耗时字段、reason 四张表读取，改表即改检查。

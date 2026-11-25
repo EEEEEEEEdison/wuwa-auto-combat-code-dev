@@ -7,31 +7,19 @@
 
 | 事实 | 依据 |
 |---|---|
-| 日志行格式是 `2026-10-04 10:02:51,099 INFO TaskExecutor Cantarella:<消息>`，时间戳精确到毫秒；`类名:` 前缀由 Logger 自动加上 | ok-script v2.0.8 `ok/util/logger.py:14,40` |
-| 所有 ok-script `Logger` 实例都包装同一个标准库 logger：`logging.getLogger("ok")` | `ok/util/logger.py:15,35` |
-| 正式版 `debug=False`，只有 info 及以上写进日志文件；`logger.debug` 在实机日志里**看不到**，只有用 `main_debug.py` 启动时才看得到 | ok-ww `config.py` `'debug': False` |
-| 上游角色日志全部是英文；框架较新的日志用 `key=value` 风格 | `BaseCombatTask.py:470` |
+| Python 侧 `Logger.get_logger(name)` 返回标准库 `logging.getLogger(name)`，经 `PipeLog` 发往 C# 宿主；角色日志由 C# 自动添加中文角色名前缀（`坎特蕾拉：<消息>`） | WWisnotOK `strategy_host/ok/__init__.py`、`strategy_host/worker.py:178-188`、`Strategies/StrategyRuntime.cs:154-160` |
+| `run_task` 落盘的 `runs/<run_id>/run.log` 格式为 `2026-11-26T00:12:34.5678900+08:00 [INFO] 坎特蕾拉：<消息>`，带完整日期与高精度时间戳 | WWisnotOK `Services/TestRunner.cs:42` |
+| Python 角色日志的 `INFO` / `DEBUG` 记入详情层文件，`WARNING` / `ERROR` 同步进入运行记录；默认日志级别为 `INFO` | WWisnotOK `Strategies/StrategyRuntime.cs:151-159`、`Services/AppStore.cs:51-52` |
+| 切人选择、协奏证据、冷却采样和动作等待由 C# 决策追踪（`decision-traces/<时间-编号>/events.jsonl`）结构化记录 | WWisnotOK `Core/CombatDecisionTrace.cs`、`Core/DecisionOperations.cs` |
 
-### 框架已经打的行
+### 引擎与决策追踪已记录的项
 
-角色代码不用重复这些行（L-9）。
+角色代码不用重复这些记录（L-9）：
 
-| 行（消息部分） | 级别 | 来源 |
-|---|---|---|
-| `switch selection result current=A(type) target=B(type) has_intro=… reason=…` | info | `BaseCombatTask.py:470` |
-| `switch_next_char A(type) -> B(type) has_intro … has_sub_dps_intro … current_con …` | info | `BaseCombatTask.py:613` |
-| `switch_next_char end {秒}s` | info | `BaseCombatTask.py:688` |
-| `switch_next_char current_con 0.xx almost full, sleep and check again` | info | `BaseCombatTask.py:600` |
-| `not in team while switching chars_A_to_B …` | info | `BaseCombatTask.py:657` |
-| `A can't find next char to switch to, performing too fast add a normal attack` | warning | `BaseCombatTask.py:609` |
-| `click_liberation end {秒}` | info | `BaseChar.py:670` |
-| `clicked liberation but no effect` | **error** | `BaseChar.py:636` |
-| `click_echo time out` | info | `BaseChar.py:546` |
-| `switch_out at full con set current_con to 0` | info | `BaseChar.py:330` |
-| `In lock with B` | info | `BaseChar.py:833`（`need_fast_perform`） |
-| `first engage` / `erned outro from …` | info | `BaseChar.py:956` / `:949` |
-| `wait_until timeout <cond> N seconds` | info | `TaskExecutor.py:442` |
-| `combat check not in combat` / `sleep check not in combat` 等 | error | `raise_not_in_combat` |
+- 切人目标、切人原因、候选优先级、治疗锁定与切人冷却（`decision-traces` `switch_selected`）；
+- 协奏读数来源与满协奏缓存（`decision-traces` `concerto`）；
+- 技能点击、长等待与持续普攻起止耗时（`decision-traces` `action_started` / `action_ended`）；
+- 脱战与角色阵亡异常（由 C# 战斗引擎记录并终止本轮）。
 
 ---
 
@@ -209,16 +197,14 @@ if lib_ready and con < 0.6:
 
 ## L-9 框架日志怎么处理
 
-| 模式 | 处理 |
+| 写法 | 处理 |
 |---|---|
-| 内置代码、非轴工坊代码 | 保留框架日志，角色代码不重复打（见上面“框架已经打的行”） |
-| 工坊循环轴代码 | ① 轴角色的 `self.logger` 按实例包一层，**info 降为 debug**（warning/error 原样）；② `"ok"` logger 上挂作用域过滤器，丢掉任务层的 `switch selection result` 和 `switch_next_char end` 两种 info 行；③ 保留框架的 `switch_next_char A -> B … current_con` 行（6-7）。实现见 workshop.md |
+| 普通队伍代码（无固定交场链） | 直接使用 `self.logger` 或 `_trace`（`tag=None`），不重复打引擎已有记录 |
+| 循环轴队伍代码 | 轴角色的 `self.logger` 按实例包一层 `_InfoAsDebug`（info 降为 debug，warning/error 原样），节点日志通过 `_raw_logger` 经 `_trace` 输出；切人与协奏看 WWisnotOK 决策追踪（见 workshop.md） |
 
-## L-10 两种模式的写法
+## L-10 两种写法
 
-### 内置模式
-
-直接内联写 `self.logger.info(f'...')`，不带 `[TAG]`。另加 helper 属于造新轮子，要先讨论。
+### 直接内联写法（普通队伍代码）
 
 ```python
 self.logger.info(f'enter mode={"intro" if self.has_intro else "natural"}')
@@ -226,7 +212,7 @@ self.logger.info(f'cast R: fail reason=no_animation lib_ready={lib_ready} in_tea
 self.logger.warning('fallback: heavy_instead_of_e')
 ```
 
-### 工坊模式
+### `_trace` helper 写法（循环轴推荐）
 
 可以用 `_trace` helper。下面是英文参考实现：
 
@@ -276,22 +262,21 @@ self._trace(None, 'decide: liberate', lib_ready=True)
 getattr(self, '_raw_logger', self.logger).warning('[F1] fallback: switch_without_r')
 ```
 
-### 实机效果示例（循环轴）
+### 实机效果示例（循环轴 `runs/<run_id>/run.log`）
 
-```
-… INFO TaskExecutor Cantarella:[F1] enter mode=forced
-… INFO TaskExecutor Cantarella:[F1] cast E: ok
-… INFO TaskExecutor Cantarella:[F1] cast R: fail reason=no_animation lib_ready=False in_team=True
-… WARNING TaskExecutor Cantarella:[F1] fallback: switch_without_r
-… INFO TaskExecutor Cantarella:[F1] exit reason=done next=Phrolova.f1
-… INFO TaskExecutor BaseCombatTask:switch_next_char Cantarella(MainDps) -> Phrolova(SubDps) has_intro False has_sub_dps_intro False current_con 0.62
-… INFO TaskExecutor Phrolova:[F1] enter mode=forced
+```text
+2026-11-26T00:12:34.1200000+08:00 [INFO] 坎特蕾拉：[F1] enter mode=forced
+2026-11-26T00:12:34.5800000+08:00 [INFO] 坎特蕾拉：[F1] cast E: ok
+2026-11-26T00:12:35.9100000+08:00 [INFO] 坎特蕾拉：[F1] cast R: fail reason=no_animation lib_ready=False in_team=True
+2026-11-26T00:12:35.9150000+08:00 [WARNING] 坎特蕾拉：[F1] fallback: switch_without_r
+2026-11-26T00:12:35.9200000+08:00 [INFO] 坎特蕾拉：[F1] exit reason=done next=Phrolova.f1
+2026-11-26T00:12:36.2100000+08:00 [INFO] 弗洛洛：[F1] enter mode=forced
 ```
 
 ## L-11 取证行（probe）
 
-- 为查某个问题临时加的行，例如图标逐帧读数、截图落盘，统一用 `probe <对象>` 事件、info 级，正式版日志里能看到。
+- 为查某个问题临时加的行，例如图标逐帧读数、截图落盘，统一用 `probe <对象>` 事件、info 级，实测日志里能看到。
 - 字段可以自定，不受 L-6 词表限制；格式仍按 L-6。
-- 截图路径写相对 `working` 的路径，不写绝对路径。
+- 截图路径写相对工作区或数据目录的路径，不写绝对路径。
 - 交付 README 必须列出本版开着的 probe 行和各自要回答的问题。
 - 问题查清后的下一版必须删掉对应的 probe 行。
