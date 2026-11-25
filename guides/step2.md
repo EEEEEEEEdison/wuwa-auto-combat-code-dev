@@ -132,9 +132,13 @@ self._force_switch_to(self._find_teammate('<下一个类名>'), '<下个节点�
 2. 在新的 `<队名>/skilltest-v<N>/` 放置 3 个角色文件、`verify_chain.py` 和 `team.json`。
 3. 写 README，列出交场链、轴与视频节点对应、参考耗时入口、试验假设和未实测项。
 4. 写 `notes.md`，记录来源、实现选择及实际检查结果。
-5. 用配置的 Python 执行 `scripts/pack_team.py <版本目录> <WWisnotOK 目录>`。
+5. 用配置的 Python 执行 `scripts/pack_team.py <版本目录> <WWisnotOK 目录>`；G0 确认本机无 `WWisnotOK` 目录时，改用 `scripts/pack_team.py <版本目录> --offline`，并在 README 标明“离线静态校验，未运行 `strategy_host/validate.py`”。
 6. 核对 zip 与声明的打包源逐字节一致。
-7. 交付 zip 路径、检查结果及待实测项，进入 [iterate.md](iterate.md)。
+7. 若 G0 选定**纯手动实测**，交付时必须附一张不超过 3 行的**本轮手测任务单**：
+   - 本版改了哪 1 个变量或目标；
+   - 进游戏重点观察哪 1–2 个节点或时刻；
+   - 若失败，优先带回哪几样最小证据（例如日志片段 + 指定节点的 1 张截图）。
+8. 交付 zip 路径、检查结果、手测任务单（手动模式）及待实测项，进入 [iterate.md](iterate.md)。
 
 `team.json.team` 用逗号分隔的英文显示名，按不区分大小写的字母序排列。
 角色表与显示名以 `<WWisnotOK 目录>/assets/characters.json` 和 `Core/Contracts.cs` 的 `Names.Aliases` 为准（漂泊者类名为 `Rover`）。

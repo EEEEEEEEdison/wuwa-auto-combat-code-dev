@@ -15,7 +15,7 @@ WWACCD（wuwa-auto-combat-code-dev）Skill 的代码规则。代码实现和实�
 
 ## 基线
 
-- [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`），通用采集、匹配、OCR、冷却、协奏与切人调度由 C# 引擎执行（`src/WWisnotOK/Core/`）。
+- WWisnotOK `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`），通用采集、匹配、OCR、冷却、协奏与切人调度由 C# 引擎执行（`src/WWisnotOK/Core/`）。获取 WWisnotOK 请联系作者邮箱 `476676559@qq.com`。
 - Python 运行时：WWisnotOK 内置 `runtime/python/python.exe`（Python 3.12，已含 `cv2`）。
 - **0-1 源码为准**：本规则或 references 的条目与当前 WWisnotOK 源码不一致时，以源码为准，并在本案工作区记录差异和来源。知识使用边界见 [语义卡说明](knowledge/cards/README.md#使用边界)。
 

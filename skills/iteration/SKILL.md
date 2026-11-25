@@ -19,15 +19,17 @@ description: WWACCD（WWisnotOK 鸣潮队伍角色代码开发）的实测迭代
 
 ## 执行
 
-1. 读取 [总入口](../../SKILL.md) 和 [iterate.md](../../guides/iterate.md)。
+1. 读取 [总入口](../../SKILL.md) 的关口 G0 结论与 [iterate.md](../../guides/iterate.md)。
 2. 按 [evidence.md](../../guides/evidence.md) 核对运行条件与证据。
 3. 已有证据时，先检查能否回答测试目标；能回答时不必重跑。
-4. 需要采证或直接测试时，读取 [MCP Skill](../mcp/SKILL.md)，按其流程自动实测并生成报告。
+4. 需要采证或直接测试时，按 G0 实测模式分流：
+   - **纯手动实测**：不调用 MCP；给用户本轮手测任务单，按 iterate.md §1.2 接收日志、录屏、截图或现象汇报。
+   - **半自动 / 自主 MCP**：读取 [MCP Skill](../mcp/SKILL.md)，按其流程实测并生成报告。
 5. 读取 [日志 Skill](../logging/SKILL.md)，用 `wait` 行和 probe 行定位卡点。
 6. 需要比较耗时时，按 [timing.md](../../guides/timing.md) 核对口径及差值。从头制作时，按 iterate.md §3.1 判定验收。
-7. 简单验收未达标时，按 iterate.md §3.2 判未达标类型。解释偏差，按根因选择退回阶段。
+7. 简单验收未达标时，按 iterate.md §3.2 判未达标类型。解释偏差，按根因选择退回阶段；G0 为“步步确认”时先向用户确认改法再改代码。
 8. 按 iterate.md §5–6 更新案例证据和验收状态。
-   用户授权自主迭代时，按 iterate.md §4.1 的上限重复第 4–8 步。
+   仅当 G0 与用户均授权“自主 MCP 迭代”时，按 iterate.md §4.1 的上限重复第 4–8 步。
 9. 按 iterate.md §5 把本轮新增或改过的 issue 登记到知识候选清单，不论是否满足入卡条件。
    用户要求推迟时，交付后再进入 [知识提议](../proposal/SKILL.md)；否则本轮进入。
 

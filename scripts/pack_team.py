@@ -1,19 +1,21 @@
-"""打包 WWisnotOK 工坊配队 zip，并用 WWisnotOK 自带的 strategy_host/validate.py 校验。
+"""打包 WWisnotOK 工坊配队 zip，并用 WWisnotOK 自带的 strategy_host/validate.py 校验（或 --offline 离线静态校验）。
 
-用法（用 WWisnotOK 自带的 Python，带 -I -B）：
-    python.exe -I -B pack_team.py <版本目录> <WWisnotOK 目录> [--src <代码目录>]
+用法（带 -I -B）：
+    完整校验（推荐，需本机 WWisnotOK 目录）：
+        <WWisnotOK python.exe> -I -B pack_team.py <版本目录> <WWisnotOK 目录> [--src <代码目录>]
+    离线校验（本机无 WWisnotOK 目录时降级使用）：
+        python -I -B pack_team.py <版本目录> --offline [--src <代码目录>]
 
 - team.json 取自版本目录。3 个角色 .py 默认也取自版本目录；项目要求先清洗代码时，用 --src 指向清洗结果。
-- 角色表取自 <WWisnotOK 目录>/assets/characters.json，显示名映射与 WWisnotOK Core/Contracts.cs 保持一致。
-- 按 TeamStore.cs 规则检查 zip：平铺无子目录、单文件 <= 2 MB、总包 <= 20 MB、恰好含 team.json 与 3 个角色 .py。
-- 调用 <WWisnotOK 目录>/strategy_host/validate.py 在独立进程校验 AST、同名类、BaseChar 继承与构造安全。
+- 完整校验：角色表取自 <WWisnotOK 目录>/assets/characters.json，并调用 strategy_host/validate.py 校验 AST、同名类、BaseChar 继承、模板名与构造安全。
+- 离线校验：使用内置静态角色清单 + ZIP 结构 + AST 顶层类定义与 BaseChar 基类检查；不执行代码、不验证构造函数与模板名，结果须在 README 中标明限制。
 - zip 写进版本目录，文件名 <类名>_<类名>_<类名>_<author>_<version>.zip，类名按 team 字段顺序。
 - 同名 zip 已存在时不覆盖，退出码 2。校验不通过时删掉本次打的 zip，退出码 1。
 """
 
 import argparse
+import ast
 import json
-import os
 import re
 import subprocess
 import sys
@@ -34,6 +36,17 @@ DISPLAY_ALIASES = {
     'Rover': 'Rover',
     'YangYangSp': 'Yangyang: Xuanling',
 }
+# 离线静态角色清单（同步自 WWisnotOK v0.4.7 assets/characters.json，共 58 个角色）
+BUILTIN_CHAR_IDS = (
+    'Aalto', 'Aemeath', 'Augusta', 'Baizhi', 'Brant', 'Calcharo', 'Camellya', 'Cantarella',
+    'Carlotta', 'Cartethyia', 'Changli', 'Chisa', 'Chixia', 'Ciaccona', 'Danjin', 'Denia',
+    'Douling', 'Encore', 'Galbrena', 'Hiyuki', 'Hsin', 'Iuno', 'Jianxin', 'JingRan',
+    'Jinhsi', 'Jiyan', 'Lily', 'Lingyang', 'Linnai', 'Lucilla', 'Lucy', 'Luhesi',
+    'Lumi', 'Lupa', 'Mornye', 'Mortefi', 'Phoebe', 'Phrolova', 'Qingxiao', 'Qiuyuan',
+    'Rebecca', 'Roccia', 'Rover', 'Sanhua', 'ShoreKeeper', 'Suisui', 'Suoming', 'Taoqi',
+    'Verina', 'Xiangliyao', 'Xigelika', 'YangYangSp', 'Yangyang', 'Yinlin', 'Youhu',
+    'Yuanwu', 'Zani', 'Zhezhi',
+)
 
 
 def safe(value):
@@ -116,23 +129,47 @@ def run_validate(python_exe, validate_path, codes):
         raise ValueError(f'strategy_host/validate.py 校验失败：{detail}')
 
 
+def run_offline_ast_validate(codes):
+    """无 WWisnotOK 目录时的离线静态检查：AST 编译、顶层同名类、显式继承 BaseChar。"""
+    for name, code in codes.items():
+        try:
+            tree = ast.parse(code, filename=f'{name}.py')
+            compile(tree, f'{name}.py', 'exec')
+        except SyntaxError as exc:
+            raise ValueError(f'{name}.py 语法错误：{exc}')
+        cls_nodes = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == name]
+        if not cls_nodes:
+            raise ValueError(f'{name}.py 顶层缺少 class {name}')
+        bases = [ast.unparse(b) for b in cls_nodes[0].bases]
+        if not any(b == 'BaseChar' or b.endswith('.BaseChar') for b in bases):
+            raise ValueError(f'{name}.py 中 class {name} 未显式继承 BaseChar（当前基类：{bases}）')
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser()
     parser.add_argument('version_dir')
-    parser.add_argument('wwisnotok_dir')
+    parser.add_argument('wwisnotok_dir', nargs='?')
+    parser.add_argument('--offline', action='store_true', help='无 WWisnotOK 目录时改用内置角色表与 AST 静态校验')
     parser.add_argument('--src')
     args = parser.parse_args()
+    if not args.offline and not args.wwisnotok_dir:
+        parser.error('必须提供 <WWisnotOK 目录>，或在无本地目录时显式传 --offline')
+
     version_dir = Path(args.version_dir).resolve()
     src_dir = Path(args.src).resolve() if args.src else version_dir
 
-    try:
-        chars_path, validate_path, py_exe = resolve_wwisnotok_paths(args.wwisnotok_dir)
-    except FileNotFoundError as e:
-        print(f'FAIL: {e}')
-        return 1
+    if args.offline:
+        valid_ids = list(BUILTIN_CHAR_IDS)
+        validate_path, py_exe = None, None
+    else:
+        try:
+            chars_path, validate_path, py_exe = resolve_wwisnotok_paths(args.wwisnotok_dir)
+        except FileNotFoundError as e:
+            print(f'FAIL: {e}')
+            return 1
+        valid_ids = [c['id'] for c in json.loads(chars_path.read_text(encoding='utf-8'))]
 
-    valid_ids = [c['id'] for c in json.loads(chars_path.read_text(encoding='utf-8'))]
     class_by_display = {display_name(cid): cid for cid in valid_ids}
 
     manifest_path = version_dir / 'team.json'
@@ -170,13 +207,20 @@ def main():
 
     try:
         _, members, codes, names = inspect_archive(zip_path, valid_ids)
-        run_validate(py_exe, validate_path, codes)
+        if args.offline:
+            run_offline_ast_validate(codes)
+        else:
+            run_validate(py_exe, validate_path, codes)
     except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as e:
         print(f'FAIL: {e}')
         zip_path.unlink(missing_ok=True)
         return 1
 
-    print(f'OK: {zip_path}')
+    if args.offline:
+        print(f'OK (offline): {zip_path}')
+        print('note: 仅完成 ZIP 结构与 AST 静态检查，未运行 WWisnotOK strategy_host/validate.py（导入时由宿主做构造与模板校验）')
+    else:
+        print(f'OK: {zip_path}')
     print(f'members: {names}')
     print(f'team: {members}')
     return 0

@@ -1,6 +1,7 @@
 # WWisnotOK MCP 实测指引
 
-本指引让 Agent 通过 [WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) 本机 MCP 服务执行代码核对、决策追踪、定向战斗探测或终焉矩阵实测，并用 `scripts/mcp_report.py` 汇总证据。
+本指引让 Agent 通过 WWisnotOK 本机 MCP 服务执行代码核对、决策追踪、定向战斗探测或终焉矩阵实测，并用 `scripts/mcp_report.py` 汇总证据。
+如需获取 WWisnotOK，请通过邮箱 `476676559@qq.com` 联系作者；不使用 MCP 时请按 G0 走纯手动实测流程。
 
 ## 1 前提
 

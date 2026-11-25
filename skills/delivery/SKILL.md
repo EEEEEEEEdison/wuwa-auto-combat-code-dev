@@ -20,9 +20,9 @@ description: WWACCD（WWisnotOK 鸣潮队伍角色代码开发）的验证交付
 ## 输出与通过条件
 
 - 适用的静态检查已通过，并记录实际结果。
-- 工坊 zip 的 WWisnotOK 打包与校验输出 `OK`。
+- 工坊 zip 的打包校验输出 `OK`（离线模式为 `OK (offline)`，且 README 已写明未跑 `strategy_host/validate.py`）。
 - 包内代码与本次声明的打包源逐字节一致。
-- README 列出来源、参考耗时入口和未实测项。
+- README 列出来源、参考耗时入口和未实测项；纯手动实测模式下已附不超过 3 行的本轮手测任务单。
 - 局部任务记录不适用的整队检查及原因。
 
 检查失败时，退回 [代码实现](../implementation/SKILL.md)。

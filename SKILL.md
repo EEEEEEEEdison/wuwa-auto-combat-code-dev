@@ -20,6 +20,23 @@ WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接�
 用户提交 zip 但没说要改代码时，按“只测稳定性”执行。
 各用法的做法和通过条件见 [iterate.md §1.1](guides/iterate.md#11-三种用法)。
 
+## 关口 G0：环境探测与协作确认
+
+新任务首次开工，或工作区 `wwaccd.local.md` 尚未记录协作方式与环境能力时，进入具体阶段前必须先完成 G0（已有有效记录且用户未改口径时直接沿用，不重复提问）：
+
+1. **先只读探测**：运行 `python -I -B scripts/check_env.py --workspace <工作区>`（纯标准库，只读，不下载、不安装、不启动任何程序），检测 `WWisnotOK` 目录、MCP 连接、`Python / cv2`、`ffmpeg` 和 `gh`。
+2. **展示探测表并征求意见**（用宿主结构化提问工具集中确认）：
+   - **可下载的缺失组件**（如 `opencv-python (cv2)`、`ffmpeg`、`gh`）：说明用途、安装方式与缺失降级方案，**必须先申请下载权限**；未经同意不得自动运行 `pip` / `winget`。用户拒绝或跳过时，在 `wwaccd.local.md` 记为“不再推荐”并直接走降级路径。
+   - **缺少 `WWisnotOK`**：先确认用户本机是否装在其他目录；若用户尚未获取并需要下载 `WWisnotOK`，明确指引其通过邮箱 `476676559@qq.com` 联系作者获取，不得附第三方链接或尝试自动下载。无本地目录时打包降级为 `pack_team.py --offline`。
+   - **实测方式**：
+     - **纯手动实测**（无 MCP 时默认推荐）：交付 zip + 手测任务单，由用户导入运行并回传日志、录屏、截图或现象；全程禁用 MCP 提示与自动操作。
+     - **半自动 MCP（单局确认）**：用 WWisnotOK MCP 采证，但每次改代码前先汇报根因与改法，经同意后再改。
+     - **自主 MCP 迭代**：在授权上限内连续自动实测与改版（仅 MCP 可用或用户明确启用时提供）。
+   - **改动审批粒度**：
+     - **步步确认**（手动/精准排错推荐）：G1、G2 及每轮改代码前均先给根因和最小改法，经同意后再写代码。
+     - **关口确认**：仅在 G1、G2 和停止条件处停下确认。
+3. **落盘复用**：将确认后的路径、实测方式、改动审批粒度与忽略引导的组件写入工作区根目录的 `wwaccd.local.md`。
+
 ## 阶段选择
 
 | 阶段 Skill | 进入条件 | 交付物 | 细则 |
@@ -88,16 +105,18 @@ WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接�
 - 不得覆盖已有版本。
 - 媒体和本地配置不得提交到本仓库。
 
-本机路径保存在工作区根目录的 `wwaccd.local.md`。
-只在所选阶段需要且无法从已有配置确定时提问。
+本机路径与 G0 协作配置保存在工作区根目录的 `wwaccd.local.md`。
+开工时先由 `scripts/check_env.py` 只读探测，再通过 G0 一次确认并写入。
 
 | 配置项 | 用途 |
 |---|---|
-| WWisnotOK 目录 | 查 `strategy_host` 源码、`assets/characters.json` 和 `strategy_host/validate.py` 校验器 |
-| WWisnotOK 数据目录 | 查 `settings.json`、`teams/`、`runs/` 和 `decision-traces/`（默认程序目录下 `data` 或 `WWISNOTOK_DATA_DIR`） |
-| Python | WWisnotOK 自带的 `runtime/python/python.exe`；取证用 `-I -B`，已含 `cv2` |
+| WWisnotOK 目录 | 查 `strategy_host` 源码、`assets/characters.json` 和 `strategy_host/validate.py` 校验器；没有时记“无”并走 `--offline` 离线打包，获取需联系 `476676559@qq.com` |
+| WWisnotOK 数据目录 | 查 `settings.json`、`teams/`、`runs/` 和 `decision-traces/`（默认程序目录下 `data` 或 `WWISNOTOK_DATA_DIR`）；没有时记“无” |
+| Python | 优先 WWisnotOK 自带的 `runtime/python/python.exe`，否则系统 Python；记录是否含 `cv2` |
+| 实测模式 | `纯手动实测` / `半自动 MCP` / `自主 MCP 迭代` |
+| 改动审批 | `步步确认` / `关口确认` |
 | 用户历史版本目录 | 收集已有配队代码；没有时记“无” |
-| gh 引导 | 记为“不再推荐”后，知识提议不再提供安装或登录 gh 的选项 |
+| 组件引导忽略 | 记录用户拒绝安装的组件（如 `cv2`、`ffmpeg`、`gh`），记为“不再推荐”后不再反复推销 |
 
 ## 提问
 

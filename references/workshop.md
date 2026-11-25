@@ -1,6 +1,6 @@
 # 工坊配队与循环轴骨架
 
-**基线**：[WWisnotOK](https://github.com/EEEEEEEEdison/WWisnotOK) `v0.4.7`（`TeamStore.cs`、`strategy_host/worker.py`、`strategy_host/validate.py`）。骨架来自实测循环轴配队写法，去掉了队伍专属的内容。
+**基线**：WWisnotOK `v0.4.7`（`TeamStore.cs`、`strategy_host/worker.py`、`strategy_host/validate.py`）。骨架来自实测循环轴配队写法，去掉了队伍专属的内容。
 
 本篇的骨架用于加快开发；交付说明里要标出自实现的部分。
 
