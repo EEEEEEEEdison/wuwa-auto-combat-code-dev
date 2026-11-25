@@ -1,24 +1,24 @@
 # WWACCD（wuwa-auto-combat-code-dev）
 
-用于 WWisnotOK（鸣潮自动战斗与日常任务工具）的队伍角色代码开发 Skill。
+用于 **WWisnotOK**（鸣潮自动战斗与日常任务工具）的队伍角色代码开发 Skill。
 仓库名为 `wuwa-auto-combat-code-dev`，简称 `WWACCD`，安装后的 Skill 名为 `wwaccd`。
-输入文字作战轴、教程视频或已有代码，交付工坊配队代码和 zip。
-支持纯手动实测（用户录屏/截屏/日志汇报）、半自动 MCP 与自主 MCP 三种协作方式，开工前通过关口 G0 探测环境并确认。
+输入文字作战轴、教程视频或已有代码，产出遵循公共 `BaseChar` 契约的工坊配队代码和 zip（推荐获取 WWisnotOK 用于校验与实测；代码在 ok-ww 上覆盖内置文件大概率也可运行）。
+支持纯手动实测（用户录屏/截屏/日志汇报）、半自动 MCP 与自主 MCP 三种协作方式，开工前通过关口 G0 探测环境并确认，并内置半自动询问式更新。
 也可直接测试已有角色代码的战斗逻辑，不必先生成新代码。
 
 项目按工作流分为总入口 `wwaccd`、六个阶段 Skill、日志 Skill `logging`、MCP 辅助 Skill `mcp` 和知识提议 Skill `proposal`。
 [总入口 SKILL.md](SKILL.md) 按任务、G0 环境确认和已有产物选择阶段。
 各阶段共用证据、代码、时间测量和验收规则。
 已有确认仍适用时，直接沿用；缺少前提时，返回对应阶段补齐。
-版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.1.0`。各版本的变化见 [版本记录](#版本记录)。
+版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.2.0`。各版本的变化见 [版本记录](#版本记录)。
 普通开发只读取随版本提供的知识；知识维护由独立入口处理。
 
 ## 准备
 
 - Agent 宿主：Claude Code、pi，或支持 Agent Skills 的其他宿主。
-- Git：按版本标签安装。
-- WWisnotOK（推荐，非强制）：本机已有时用于查 `strategy_host/` 策略基线、跑 `strategy_host/validate.py` 校验和 MCP 实测；如需获取/下载 WWisnotOK，请通过邮箱 `476676559@qq.com` 联系作者。本机没有时可降级为 `pack_team.py --offline` 离线打包 + 纯手动实测。
-- Python：优先使用 WWisnotOK 自带的 `runtime/python/python.exe`（Python 3.12，已含 `cv2`），也可使用系统 Python 3；缺少 `cv2` 或 `ffmpeg` 时，Agent 会在 G0 说明用途并申请下载权限，或直接降级为人工截图/字幕核对。
+- Git：按版本标签安装与半自动更新。
+- WWisnotOK（推荐）：原生支持工坊配队 zip 导入（6 导入位）、`strategy_host/validate.py` 校验、内置基线与可选 MCP；如需获取/下载 WWisnotOK，请通过邮箱 `476676559@qq.com` 联系作者。本机暂无时可先走 `pack_team.py --offline` 离线打包 + 纯手动实测。
+- Python：优先使用 WWisnotOK 自带 Python，也可使用系统 Python 3；缺少 `cv2` 或 `ffmpeg` 时，Agent 会在 G0 说明用途并申请下载权限，或直接降级为人工截图/字幕核对。
 - gh：可选。知识反馈时可由 Agent 申请授权后安装，见 [用 gh 自动反馈](#用-gh-自动反馈)。
 
 开工前 Agent 先运行只读探测脚本 `scripts/check_env.py`，再通过 G0 向用户汇总环境现状、征求组件与协作方式意见，结果保存在工作区根目录的 `wwaccd.local.md`。
@@ -26,12 +26,12 @@
 ## 安装
 
 GitHub 的正式版本标签固定指向对应提交。
-例如，“安装 1.1.0 版本”表示安装 `v1.1.0` 标签的内容。
+例如，“安装 1.2.0 版本”表示安装 `v1.2.0` 标签的内容。
 安装不依赖专用 zip，不能用默认分支代替指定版本。
 
 可向 Agent 提出：
 
-> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.1.0。
+> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.2.0。
 > 按该标签的 README 安装，并核对版本、加载路径和重复副本。
 
 安装目录名必须为 `wwaccd`，与总入口的 `name` 一致。
@@ -40,10 +40,10 @@ GitHub 的正式版本标签固定指向对应提交。
 
 ```sh
 # Claude Code
-git clone --branch v1.1.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
+git clone --branch v1.2.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
 
 # pi
-git clone --branch v1.1.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
+git clone --branch v1.2.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
 ```
 
 其他宿主克隆到宿主的 Skill 目录，目录名同样用 `wwaccd`。
@@ -100,14 +100,21 @@ pi 扫描到含 `SKILL.md` 的目录后便停止递归。
 目录名已是 `wwaccd` 且为干净的 Git 仓库时，在实际仓库中切换版本：
 
 ```sh
-git fetch origin tag v1.1.0 --no-tags
-git switch --detach v1.1.0
+git fetch origin tag v1.2.0 --no-tags
+git switch --detach v1.2.0
+```
+
+也可通过内置半自动更新脚本检查与切换（仅在工作树干净且为标签安装时执行，不会覆盖未提交改动或开发分支）：
+
+```sh
+python -I -B scripts/update_skill.py --check
+python -I -B scripts/update_skill.py --apply
 ```
 
 安装后核对：
 
-- `HEAD` 与 `refs/tags/v1.1.0^{commit}` 指向同一提交；
-- 实际安装目录中的 `VERSION` 为 `1.1.0`；
+- `HEAD` 与 `refs/tags/v1.2.0^{commit}` 指向同一提交；
+- 实际安装目录中的 `VERSION` 为 `1.2.0`；
 - `git status --porcelain --untracked-files=all` 没有输出；
 - 宿主加载的是该安装目录，不存在同名或旧名副本。
 
@@ -324,7 +331,8 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 | [templates/verify_chain.py](templates/verify_chain.py) | 静态交场链检查模板 |
 | [templates/knowledge-proposal.md](templates/knowledge-proposal.md) | 知识提议模板 |
 | [templates/mcp/](templates/mcp) | WWisnotOK MCP 实测辅助脚本与配置模板 |
-| [scripts/check_env.py](scripts/check_env.py) | 只读探测本机 WWisnotOK、MCP、Python/cv2、ffmpeg、gh，供 G0 征求意见 |
+| [scripts/check_env.py](scripts/check_env.py) | 只读探测本机 WWisnotOK、MCP、Python/cv2、ffmpeg、gh 及 Skill 新版本，供 G0 征求意见 |
+| [scripts/update_skill.py](scripts/update_skill.py) | 半自动询问式更新脚本：24 小时节流检查最新标签，用户同意后安全切换标签 |
 | [scripts/pack_team.py](scripts/pack_team.py) | 打包 zip，调用 WWisnotOK `strategy_host/validate.py` 校验，支持 `--offline` 离线静态校验 |
 | [scripts/check_logs.py](scripts/check_logs.py) | 按 logging.md 的词表和规则检查日志调用 |
 | [scripts/mcp_report.py](scripts/mcp_report.py) | 汇总一次 WWisnotOK 实测：解析 `run.log`、决策追踪 `events.jsonl` 与问题行 |
@@ -345,6 +353,9 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 ## 版本记录
 
+- 1.2.0：
+  - 新增半自动询问式更新脚本 `scripts/update_skill.py`（优先 `git ls-remote` 检查最新标签，24 小时节流缓存放在系统临时目录，用户同意前不执行更新，自动拒绝覆盖脏目录、开发分支或非 Git 目录），并接入 `scripts/check_env.py --check-update` 与 `SKILL.md` 更新规范。
+  - 在 `SKILL.md` 与 `rules.md` 明确写入四条代码写作原则（面向公共 `BaseChar` 契约不绑宿主私有实现、证据驱动等待、自包含颜色识别、自描述日志与交场链）；明确默认面向 WWisnotOK 开发并推荐联系作者获取用于验证，同时附注遵守公共契约的代码在 ok-ww 上大概率也可运行。
 - 1.1.0：
   - 新增总入口**关口 G0** 与只读环境探测脚本 `scripts/check_env.py`：开工前先探测本机 `WWisnotOK`、MCP、`Python/cv2`、`ffmpeg` 与 `gh`，向用户展示能力表并集中确认协作方式（纯手动实测 / 半自动 MCP / 自主 MCP）与改动审批粒度（步步确认 / 关口确认）；可下载组件须先说明用途并申请权限，缺少 `WWisnotOK` 时指引通过邮箱 `476676559@qq.com` 联系作者。
   - 新增纯手动实测闭环：`delivery` 交付必附 3 行以内手测任务单，`iterate.md` 新增手动回传协议（缺证据禁止盲改、仅给单点采证指引），缺 `cv2`/`ffmpeg` 时自动降级为人工截图与字幕核对。

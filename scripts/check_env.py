@@ -1,12 +1,12 @@
 """只读探测本机开发环境能力，供 WWACCD 关口 G0 向用户汇总现状并征求意见。
 
 用法：
-    python -I -B scripts/check_env.py [--workspace <工作区目录>] [--wwisnotok <WWisnotOK 目录>] [--json]
+    python -I -B scripts/check_env.py [--workspace <工作区目录>] [--wwisnotok <WWisnotOK 目录>] [--check-update] [--json]
 
 特点：
 - 仅使用 Python 标准库，任何 Python 3 均可运行。
-- 严格只读：不修改文件、不下载安装任何组件、不启动游戏或 WWisnotOK、不发起外网请求。
-- 检查项：wwaccd.local.md、WWisnotOK 目录与数据目录、WWisnotOK MCP connection.json、Python 与 cv2、ffmpeg、gh 登录状态。
+- 严格只读：不修改文件、不下载安装任何组件、不启动游戏或 WWisnotOK。
+- 检查项：wwaccd.local.md、WWisnotOK 目录与 MCP、Python 与 cv2、ffmpeg、gh 登录状态，以及可选的新版本检查。
 """
 
 import argparse
@@ -31,7 +31,6 @@ def parse_local_config(workspace):
     text = cfg_path.read_text(encoding='utf-8-sig', errors='replace')
     for line in text.splitlines():
         s = line.strip()
-        # 表格行：| 项 | 值 |
         if s.startswith('|') and s.endswith('|') and not re.match(r'^\|\s*-+', s):
             parts = [p.strip().strip('`') for p in s.strip('|').split('|')]
             if len(parts) >= 2 and parts[0] not in ('项', '配置项'):
@@ -48,6 +47,11 @@ def parse_local_config(workspace):
 def is_valid_wwisnotok_dir(path):
     p = Path(path)
     return (p / 'assets' / 'characters.json').is_file() and (p / 'strategy_host' / 'validate.py').is_file()
+
+
+def is_valid_okww_working(path):
+    p = Path(path)
+    return (p / 'src' / 'char' / 'BaseChar.py').is_file() and (p / 'src' / 'char' / 'CharFactory.py').is_file()
 
 
 def find_wwisnotok_dir(explicit, local_entries, workspace):
@@ -74,6 +78,33 @@ def find_wwisnotok_dir(explicit, local_entries, workspace):
             continue
         seen.add(resolved)
         if is_valid_wwisnotok_dir(resolved):
+            return str(resolved)
+    return None
+
+
+def find_okww_working(explicit, local_entries, workspace):
+    candidates = []
+    if explicit:
+        candidates.append(Path(explicit))
+    for k, v in local_entries.items():
+        if 'ok-ww' in k.lower() and v and v != '无':
+            candidates.append(Path(v.split('（')[0].strip()))
+    ws = Path(workspace).resolve()
+    candidates += [
+        ws / 'ok-ww' / 'data' / 'apps' / 'ok-ww' / 'working',
+        ws.parent / 'ok-ww' / 'data' / 'apps' / 'ok-ww' / 'working',
+        ws.parent / 'ok-ww',
+    ]
+    seen = set()
+    for cand in candidates:
+        try:
+            resolved = cand.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if is_valid_okww_working(resolved):
             return str(resolved)
     return None
 
@@ -116,12 +147,16 @@ def probe_mcp(local_entries, ww_dir):
     return {'status': 'not_running', 'connection_file': None, 'url': None, 'pid': None, 'reachable': False}
 
 
-def probe_python_cv2(ww_dir):
+def probe_python_cv2(ww_dir, okww_dir):
     py_candidates = []
     if ww_dir:
         ww_py = Path(ww_dir) / 'runtime' / 'python' / 'python.exe'
         if ww_py.is_file():
             py_candidates.append(('wwisnotok', str(ww_py)))
+    if okww_dir:
+        ok_py = Path(okww_dir).parent / 'python' / 'python.exe'
+        if ok_py.is_file():
+            py_candidates.append(('ok-ww', str(ok_py)))
     py_candidates.append(('current', sys.executable))
     which_py = shutil.which('python')
     if which_py and os.path.abspath(which_py) != os.path.abspath(sys.executable):
@@ -161,33 +196,46 @@ def probe_gh():
         return {'status': 'unknown', 'path': gh}
 
 
+def probe_skill_update():
+    upd_script = Path(__file__).with_name('update_skill.py')
+    if not upd_script.is_file():
+        return None
+    try:
+        r = subprocess.run(
+            [sys.executable, '-I', '-B', str(upd_script), '--check', '--json'],
+            capture_output=True, text=True, encoding='utf-8', timeout=8,
+        )
+        return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
+    except Exception:
+        return None
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser()
     ap.add_argument('--workspace', default='.')
     ap.add_argument('--wwisnotok', default=None)
+    ap.add_argument('--check-update', action='store_true', help='顺带只读检查 WWACCD 是否有新版本（24 小时节流缓存）')
     ap.add_argument('--json', action='store_true')
     args = ap.parse_args()
 
     local_cfg = parse_local_config(args.workspace)
     ww_dir = find_wwisnotok_dir(args.wwisnotok, local_cfg['entries'], args.workspace)
     mcp = probe_mcp(local_cfg['entries'], ww_dir)
-    py_info = probe_python_cv2(ww_dir)
+    py_info = probe_python_cv2(ww_dir, None)
     ffmpeg = shutil.which('ffmpeg')
     gh = probe_gh()
+    update_info = probe_skill_update() if args.check_update else None
 
     report = {
         'workspace': str(Path(args.workspace).resolve()),
         'local_config': local_cfg,
-        'wwisnotok': {
-            'found': bool(ww_dir),
-            'dir': ww_dir,
-            'contact_email': '476676559@qq.com',
-        },
+        'wwisnotok': {'found': bool(ww_dir), 'dir': ww_dir, 'contact_email': '476676559@qq.com'},
         'mcp': mcp,
         'python': py_info,
         'ffmpeg': {'found': bool(ffmpeg), 'path': ffmpeg},
         'gh': gh,
+        'skill_update': update_info,
         'recommended_test_mode': 'semi_auto_mcp' if mcp['reachable'] else 'manual',
     }
 
@@ -200,8 +248,8 @@ def main():
     print('| 组件 | 当前状态 | 路径 / 详情 | 缺失影响与获取方式 |')
     print('|---|---|---|---|')
     ww_state = '已找到' if ww_dir else '未找到'
-    ww_note = '完整支持 validate.py 校验与内置策略基线' if ww_dir else '改走 --offline 离线打包与手动实测；如需下载 WWisnotOK 请联系作者邮箱 476676559@qq.com'
-    print(f'| WWisnotOK | {ww_state} | `{ww_dir or "无"}` | {ww_note} |')
+    ww_note = '支持工坊 zip（validate.py）、内置基线与可选 MCP' if ww_dir else '推荐获取 WWisnotOK 用于验证（联系作者邮箱 476676559@qq.com）；暂无本地目录时可走 --offline 打包'
+    print(f'| WWisnotOK（推荐） | {ww_state} | `{ww_dir or "无"}` | {ww_note} |')
 
     mcp_map = {'reachable': '已连通', 'stale_connection_file': '连接文件存在但端口未监听', 'not_running': '未运行', 'invalid_connection_file': '连接文件异常'}
     mcp_note = '支持半自动或自主 MCP 实测' if mcp['reachable'] else '推荐先走纯手动实测，或开启 WWisnotOK --mcp 后再启用 MCP'
@@ -221,6 +269,9 @@ def main():
     print()
     print(f'- 本地配置文件：`{local_cfg["path"]}`（{"已存在" if local_cfg["exists"] else "尚未创建"}）')
     print(f'- 默认推荐实测模式：{"半自动 MCP（可切换纯手动/自主）" if mcp["reachable"] else "纯手动实测"}')
+    if update_info and update_info.get('has_update'):
+        print(f'- WWACCD 有新版本：v{update_info["local_version"]} → {update_info["latest_tag"]}（对比：{update_info["compare_url"]}）')
+        print(f'  更新命令：{update_info["update_command"]}')
     return 0
 
 

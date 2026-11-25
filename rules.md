@@ -13,10 +13,19 @@ WWACCD（wuwa-auto-combat-code-dev）Skill 的代码规则。代码实现和实�
 
 日常工作流：用户给日志、决策追踪和录像，AI 定位出招或切人问题后修改代码（见“迭代工作流”）。
 
+## 代码写作原则
+
+所有角色代码均遵守以下四条原则：
+
+1. **面向公共契约，不绑宿主私有实现**：只调用 `BaseChar` 与 `self.task` 公开方法，不依赖 `task.executor` 私有成员、`logging.getLogger('ok')`、C# 内部字段或未公开属性（如已废弃的 `con_full_size`）。
+2. **动作与等待由证据驱动**：优先状态判据与帧数据，不写无依据盲等；等待和循环必带正数超时，按住放进 `try/finally`，不吞脱战/阵亡异常。
+3. **识别自包含、可移植**：优先内置 HUD 状态，其次按参考分辨率缩放的颜色占比，不依赖随包外带的新图片模板。
+4. **交场与日志自描述、无副作用**：循环轴交场链可被 `verify_chain.py` 静态校验；日志按统一英文模板输出，不为打日志额外读游戏状态（L-8）。
+
 ## 基线
 
-- WWisnotOK `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`），通用采集、匹配、OCR、冷却、协奏与切人调度由 C# 引擎执行（`src/WWisnotOK/Core/`）。获取 WWisnotOK 请联系作者邮箱 `476676559@qq.com`。
-- Python 运行时：WWisnotOK 内置 `runtime/python/python.exe`（Python 3.12，已含 `cv2`）。
+- 默认基底：**WWisnotOK `v0.4.7`**（`strategy_host/src/char/BaseChar.py` 适配自 `v3.8.0`，C# 引擎执行采集/匹配/OCR/切人调度；推荐通过作者邮箱 `476676559@qq.com` 获取 WWisnotOK 用于校验与实测）。
+- 兼容性说明：遵守上述四条公共契约写出的 `.py` 文件，直接覆盖到 `ok-ww` 内置 `src/char/` 大概率也可运行，但本 Skill 默认按 WWisnotOK 开发与验证（不维护 `ok-ww` 专属流程）。
 - **0-1 源码为准**：本规则或 references 的条目与当前 WWisnotOK 源码不一致时，以源码为准，并在本案工作区记录差异和来源。知识使用边界见 [语义卡说明](knowledge/cards/README.md#使用边界)。
 
 ## 两种写法（按是否固定交场链判定）

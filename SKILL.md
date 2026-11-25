@@ -1,13 +1,13 @@
 ---
 name: wwaccd
-description: WWACCD（wuwa-auto-combat-code-dev）：WWisnotOK（鸣潮自动战斗工具）队伍角色代码开发与实测 Skill 总入口。三种用法：按文字轴、教程视频从头制作工坊配队代码；提交 zip 只测稳定性；提交 zip 按 MCP 实测结果迭代。按任务选择 6 个阶段：materials 素材获取、rotation 轴解析、timeline 时序建模、implementation 代码实现、delivery 验证交付、iteration 实测迭代。mcp 通过 WWisnotOK MCP 实测：核对状态与代码版本、启用决策追踪、执行自动战斗或矩阵日常、生成报告。logging 负责日志写法与检查。proposal 把实测发现整理成知识提议。适用于作战轴转代码、BaseChar、协奏切人和技能触发。支持循环轴、工坊代码、team.json、日志与决策追踪排错。
+description: WWACCD（wuwa-auto-combat-code-dev）：WWisnotOK（鸣潮自动战斗工具）队伍角色代码开发与实测 Skill 总入口。开工经关口 G0 探测环境并确认协作方式与审批粒度；按任务选择 6 个阶段：materials 素材获取、rotation 轴解析、timeline 时序建模、implementation 代码实现、delivery 验证交付、iteration 实测迭代；含 logging 日志检查、mcp 自动采证、proposal 知识提议与半自动询问式更新。适用于作战轴转代码、BaseChar、协奏切人、循环轴、team.json、日志与决策追踪排错。
 ---
 
 # WWACCD（wuwa-auto-combat-code-dev）
 
-WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接测试现有代码。
-按任务和已有产物选择阶段。
-安装版本见 [VERSION](VERSION)，固定版本安装见 [README](README.md#安装)。
+默认面向 WWisnotOK（工坊配队 zip）的鸣潮角色代码开发 Skill，推荐获取 WWisnotOK（联系作者邮箱 `476676559@qq.com`）用于校验与实测；代码遵守公共 `BaseChar` 契约，在 ok-ww 上覆盖内置代码大概率也可运行。
+按任务、G0 确认和已有产物选择阶段。
+安装版本见 [VERSION](VERSION)，固定版本安装与半自动更新见 [README](README.md#安装)。
 
 ## 三种用法
 
@@ -24,18 +24,27 @@ WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接�
 
 新任务首次开工，或工作区 `wwaccd.local.md` 尚未记录协作方式与环境能力时，进入具体阶段前必须先完成 G0（已有有效记录且用户未改口径时直接沿用，不重复提问）：
 
-1. **先只读探测**：运行 `python -I -B scripts/check_env.py --workspace <工作区>`（纯标准库，只读，不下载、不安装、不启动任何程序），检测 `WWisnotOK` 目录、MCP 连接、`Python / cv2`、`ffmpeg` 和 `gh`。
+1. **先只读探测**：运行 `python -I -B scripts/check_env.py --workspace <工作区> --check-update`（若 `wwaccd.local.md` 记有 `自动更新检查：关闭`，去掉 `--check-update`）。脚本纯标准库、严格只读，检测 `WWisnotOK` 目录、MCP 连接、`Python / cv2`、`ffmpeg`、`gh` 与 Skill 新版本。
 2. **展示探测表并征求意见**（用宿主结构化提问工具集中确认）：
    - **可下载的缺失组件**（如 `opencv-python (cv2)`、`ffmpeg`、`gh`）：说明用途、安装方式与缺失降级方案，**必须先申请下载权限**；未经同意不得自动运行 `pip` / `winget`。用户拒绝或跳过时，在 `wwaccd.local.md` 记为“不再推荐”并直接走降级路径。
-   - **缺少 `WWisnotOK`**：先确认用户本机是否装在其他目录；若用户尚未获取并需要下载 `WWisnotOK`，明确指引其通过邮箱 `476676559@qq.com` 联系作者获取，不得附第三方链接或尝试自动下载。无本地目录时打包降级为 `pack_team.py --offline`。
+   - **缺少 `WWisnotOK`**：先确认用户本机是否装在其他目录；若尚未获取，推荐通过邮箱 `476676559@qq.com` 联系作者下载 WWisnotOK 用于校验与实测（不得附第三方链接或尝试自动下载）。暂无本地目录时打包降级为 `pack_team.py --offline`。
    - **实测方式**：
-     - **纯手动实测**（无 MCP 时默认推荐）：交付 zip + 手测任务单，由用户导入运行并回传日志、录屏、截图或现象；全程禁用 MCP 提示与自动操作。
+     - **纯手动实测**（无 MCP 时默认推荐）：交付 zip + 手测任务单，由用户部署运行并回传日志、录屏、截图或现象；全程不提示 MCP。
      - **半自动 MCP（单局确认）**：用 WWisnotOK MCP 采证，但每次改代码前先汇报根因与改法，经同意后再改。
-     - **自主 MCP 迭代**：在授权上限内连续自动实测与改版（仅 MCP 可用或用户明确启用时提供）。
+     - **自主 MCP 迭代**：在授权上限内连续自动实测与改版（仅 MCP 可用且用户明确启用时提供）。
    - **改动审批粒度**：
      - **步步确认**（手动/精准排错推荐）：G1、G2 及每轮改代码前均先给根因和最小改法，经同意后再写代码。
      - **关口确认**：仅在 G1、G2 和停止条件处停下确认。
-3. **落盘复用**：将确认后的路径、实测方式、改动审批粒度与忽略引导的组件写入工作区根目录的 `wwaccd.local.md`。
+3. **落盘复用**：将确认后的路径、实测方式、改动审批粒度与忽略引导项写入工作区根目录的 `wwaccd.local.md`。
+
+### 半自动版本更新
+
+检测到 `WWACCD 有新版本` 时：
+
+- 同一会话最多提醒一次，写明新旧版本号、对比链接与更新命令，在 G0 或任务回执“需要你”中征求用户意见（选项：立即更新 / 本次跳过 / 不再自动检查）。
+- **用户同意前不得运行 `scripts/update_skill.py --apply`**。
+- 用户同意后运行 `python -I -B <安装目录>/scripts/update_skill.py --apply --target <标签>`；更新完成后提醒用户新开 Claude Code 会话（或 pi 执行 `/reload`）。
+- 用户选“不再自动检查”时，在 `wwaccd.local.md` 记一行 `自动更新检查：关闭`。
 
 ## 阶段选择
 
@@ -77,12 +86,21 @@ WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接�
 - 语义卡的读取、冲突记录和安装目录边界见 [knowledge/cards/README.md](knowledge/cards/README.md)。
 - 帧数据的列含义、衔接与离场规则和使用规则见 [knowledge/frames/README.md](knowledge/frames/README.md)。
 
-## 执行原则
+## 代码写作原则与执行原则
+
+代码写作遵守四条总原则（细则见 [rules.md](rules.md)）：
+
+1. **面向公共契约，不绑宿主私有实现**：只调用 `BaseChar` 与 `self.task` 公开角色/战斗接口，不依赖宿主私有内部对象或未公开字段，确保代码可在目标客户端稳定运行且易于移植。
+2. **动作与等待由证据驱动**：优先状态判据与帧数据，不写无依据盲等；等待和循环必带正数超时，按住用 `try/finally` 释放，不吞脱战/阵亡异常。
+3. **识别自包含、可移植**：优先内置 HUD 状态，其次按参考分辨率缩放的颜色占比，不依赖随包外带新图片模板。
+4. **交场与日志自描述、无副作用**：循环轴交场链可由 `verify_chain.py` 静态校验；日志按统一英文模板输出，不为打日志额外读游戏状态。
+
+执行原则：
 
 - 忠实复现已确认的轴。不得擅自改变动作意图。
-- G1 确认和关键歧义，按各阶段的要求提问。
+- G0、G1 确认和关键歧义，按各阶段的要求提问。
 - 实测改动前说明根因和改法。已有明确授权时，直接执行授权范围内的修改。
-- 打包固定用 `scripts/pack_team.py`。
+- 打包固定用 `scripts/pack_team.py`（有本地 WWisnotOK 目录跑完整 `validate.py`，无目录时用 `--offline`）。
 - 下载、抽帧和比较脚本放在媒体目录或会话 scratchpad。
 - 素材来源范围按 evidence.md。不得查第三方 wiki 补角色机制。
 
@@ -110,13 +128,14 @@ WWisnotOK 队伍角色代码开发 Skill，可生成配队代码，也可直接�
 
 | 配置项 | 用途 |
 |---|---|
-| WWisnotOK 目录 | 查 `strategy_host` 源码、`assets/characters.json` 和 `strategy_host/validate.py` 校验器；没有时记“无”并走 `--offline` 离线打包，获取需联系 `476676559@qq.com` |
-| WWisnotOK 数据目录 | 查 `settings.json`、`teams/`、`runs/` 和 `decision-traces/`（默认程序目录下 `data` 或 `WWISNOTOK_DATA_DIR`）；没有时记“无” |
-| Python | 优先 WWisnotOK 自带的 `runtime/python/python.exe`，否则系统 Python；记录是否含 `cv2` |
+| WWisnotOK 目录 | 查 `strategy_host` 源码、`assets/characters.json` 和 `strategy_host/validate.py`；没有时记“无”并走 `--offline` 离线打包，推荐联系 `476676559@qq.com` 获取 |
+| WWisnotOK 数据目录 | 查 `settings.json`、`teams/`、`runs/` 和 `decision-traces/`；没有时记“无” |
+| Python | 优先 WWisnotOK 自带 Python，否则系统 Python；记录是否含 `cv2` |
 | 实测模式 | `纯手动实测` / `半自动 MCP` / `自主 MCP 迭代` |
 | 改动审批 | `步步确认` / `关口确认` |
 | 用户历史版本目录 | 收集已有配队代码；没有时记“无” |
 | 组件引导忽略 | 记录用户拒绝安装的组件（如 `cv2`、`ffmpeg`、`gh`），记为“不再推荐”后不再反复推销 |
+| 自动更新检查 | 默认开启（24 小时节流）；用户拒绝时记 `关闭` |
 
 ## 提问
 

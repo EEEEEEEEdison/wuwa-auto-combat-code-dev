@@ -1,7 +1,7 @@
 {
   "name": "wwaccd",
-  "version": "1.1.0",
-  "description": "WWACCD（wuwa-auto-combat-code-dev）：WWisnotOK（鸣潮自动战斗工具）队伍角色代码开发 Skill，含素材获取、轴解析、时序建模、代码实现、验证交付、实测迭代 6 个阶段 Skill、日志 Skill、MCP 辅助 Skill 和知识提议 Skill；支持直接测试已有队伍代码的战斗逻辑。",
+  "version": "1.2.0",
+  "description": "WWACCD（wuwa-auto-combat-code-dev）：WWisnotOK（鸣潮自动战斗工具）队伍角色代码开发 Skill，含 6 个阶段 Skill、日志、MCP、知识提议、G0 环境探测、手动实测闭环与半自动询问式更新。",
   "author": {
     "name": "EEEEEEEEdison"
   },
