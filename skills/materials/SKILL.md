@@ -13,7 +13,7 @@ description: WWACCD（WWisnotOK 鸣潮队伍角色代码开发）的素材获取
 
 1. 读取 [总入口](../../SKILL.md) 的关口 G0 与工作区要求；G0 尚未完成时先执行 G0。
 2. 按 [evidence.md](../../guides/evidence.md) 确定待获取的信息。
-3. 按 [step1.md §1](../../guides/step1.md) 收集素材（无 `cv2`/`ffmpeg` 时按 G0 降级为人工关键帧截图或字幕核对）。
+3. 按 [step1.md §1](../../guides/step1.md) 收集素材（无 `cv2`/`ffmpeg` 时按 G0 确认与 step1.md §1 降级处理）。
 4. 按 [timing.md §1](../../guides/timing.md) 保留时间证据。
 5. 按 evidence.md §5 更新阶段交接。
 

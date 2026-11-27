@@ -26,7 +26,10 @@ description: WWACCD（wuwa-auto-combat-code-dev）：WWisnotOK（鸣潮自动战
 
 1. **先只读探测**：运行 `python -I -B scripts/check_env.py --workspace <工作区> --check-update`（若 `wwaccd.local.md` 记有 `自动更新检查：关闭`，去掉 `--check-update`）。脚本纯标准库、严格只读，检测 `WWisnotOK` 目录、MCP 连接、`Python / cv2`、`ffmpeg`、`gh` 与 Skill 新版本。
 2. **展示探测表并征求意见**（用宿主结构化提问工具集中确认）：
-   - **可下载的缺失组件**（如 `opencv-python (cv2)`、`ffmpeg`、`gh`）：说明用途、安装方式与缺失降级方案，**必须先申请下载权限**；未经同意不得自动运行 `pip` / `winget`。用户拒绝或跳过时，在 `wwaccd.local.md` 记为“不再推荐”并直接走降级路径。
+   - **可下载的缺失组件**（如 `opencv-python (cv2)`、`ffmpeg`、`gh`）：先按当前任务与宿主能力筛选，只询问本次实际需要的组件：
+     - 当前任务不涉及参考视频（如提交 zip 只测稳定性、无参考视频的纯代码/MCP 迭代）时，不必询问安装 `cv2` 和 `ffmpeg`。
+     - 当前 Agent 原生支持直接读取视频与音频时，不必主动询问安装 `ffmpeg` 和 `cv2`（说明中写明：当前 Agent 可直读视频与音频完成素材检查；仅在遇到 `.m4s` 等无法直读的封装格式时按需提示 `ffmpeg`，在需要 0.1 秒/原帧率精确读帧或局部裁剪放大 HUD/轴表时按需提示 `cv2` 或请用户提供关键帧截图）。
+     - 对其余需要询问的组件，说明用途、安装方式与缺失降级方案，**必须先申请下载权限**；未经同意不得自动运行 `pip` / `winget`。用户拒绝或跳过时，在 `wwaccd.local.md` 记为“不再推荐”并直接走降级路径。
    - **缺少 `WWisnotOK`**：先确认用户本机是否装在其他目录；若尚未获取，推荐通过邮箱 `476676559@qq.com` 联系作者下载 WWisnotOK 用于校验与实测（不得附第三方链接或尝试自动下载）。暂无本地目录时打包降级为 `pack_team.py --offline`。
    - **实测方式**：
      - **纯手动实测**（无 MCP 时默认推荐）：交付 zip + 手测任务单，由用户部署运行并回传日志、录屏、截图或现象；全程不提示 MCP。

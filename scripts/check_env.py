@@ -256,11 +256,11 @@ def main():
     print(f'| WWisnotOK MCP | {mcp_map.get(mcp["status"], mcp["status"])} | `{mcp["url"] or "无"}` | {mcp_note} |')
 
     py_state = f'Python {py_info["version"]} + cv2 {py_info["cv2"]}' if py_info.get('cv2') else (f'Python {py_info["version"]}（缺 cv2）' if py_info.get('version') else '未找到')
-    py_note = '支持自动抽帧与画面比对' if py_info.get('cv2') else '无法自动抽帧，需申请安装 opencv-python 或改由用户提供关键帧截图'
+    py_note = '支持自动抽帧与画面比对' if py_info.get('cv2') else '无法自动抽帧；若当前 Agent 支持直读视频可先跳过，仅在帧级精确测时或 HUD 裁剪放大时按需申请安装 opencv-python 或请用户提供关键帧截图'
     print(f'| Python / cv2 | {py_state} | `{py_info.get("path") or "无"}` | {py_note} |')
 
     ff_state = '已安装' if ffmpeg else '未安装'
-    ff_note = '支持本地音轨提取与转码' if ffmpeg else '可选；缺少时口播核对依赖字幕或用户转述，如需安装须先申请权限'
+    ff_note = '支持本地音轨提取与转码' if ffmpeg else '可选；若当前 Agent 支持直读视频/音频则无需安装（仅封装不兼容时按需提示），否则依赖字幕或用户转述；如需安装须先申请权限'
     print(f'| ffmpeg（可选） | {ff_state} | `{ffmpeg or "无"}` | {ff_note} |')
 
     gh_map = {'logged_in': '已登录', 'not_logged_in': '已安装未登录', 'not_installed': '未安装', 'unknown': '状态未知'}

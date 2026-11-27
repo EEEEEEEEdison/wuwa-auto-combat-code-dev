@@ -18,7 +18,7 @@
 - Agent 宿主：Claude Code、pi，或支持 Agent Skills 的其他宿主。
 - Git：按版本标签安装与半自动更新。
 - WWisnotOK（推荐）：原生支持工坊配队 zip 导入（6 导入位）、`strategy_host/validate.py` 校验、内置基线与可选 MCP；如需获取/下载 WWisnotOK，请通过邮箱 `476676559@qq.com` 联系作者。本机暂无时可先走 `pack_team.py --offline` 离线打包 + 纯手动实测。
-- Python：优先使用 WWisnotOK 自带 Python，也可使用系统 Python 3；缺少 `cv2` 或 `ffmpeg` 时，Agent 会在 G0 说明用途并申请下载权限，或直接降级为人工截图/字幕核对。
+- Python：优先使用 WWisnotOK 自带 Python，也可使用系统 Python 3；缺少 `cv2` 或 `ffmpeg` 时，Agent 会在 G0 按任务需要与自身视频读取能力决定是否申请下载权限，否则直接直读视频或降级为人工截图/字幕核对。
 - gh：可选。知识反馈时可由 Agent 申请授权后安装，见 [用 gh 自动反馈](#用-gh-自动反馈)。
 
 开工前 Agent 先运行只读探测脚本 `scripts/check_env.py`，再通过 G0 向用户汇总环境现状、征求组件与协作方式意见，结果保存在工作区根目录的 `wwaccd.local.md`。
