@@ -101,6 +101,16 @@
       "state_checks": ["切人类型", "出场协奏"]
     }
   },
+  "tolerances": {
+    "zero_tolerance": [
+      {"id": "ZT1", "kind": "entry_mismatch", "scope": "all_nodes", "rule": "节点实际入场方式与 entry.kind 不符", "source": "default"},
+      {"id": "ZT2", "kind": "node_mismatch", "scope": "all_nodes", "rule": "节点跳转偏离 next 链或意外交还框架", "source": "default"},
+      {"id": "ZT3", "kind": "fallback", "scope": "all_nodes", "rule": "触发 WARNING 级 fallback 兜底分支", "source": "default"},
+      {"id": "ZT4", "kind": "key_skill_fail", "scope": "acceptance.simple", "rule": "定义性技能重试后仍 cast fail", "source": "default"},
+      {"id": "ZT5", "kind": "runtime_fatal", "scope": "all_nodes", "rule": "出现 ERROR、找不到目标角色或卡死 interrupt", "source": "default"}
+    ],
+    "confirmed": true
+  },
   "issues": [
     {
       "id": "I1", "refs": ["T1", "D1"], "kind": "timing", "impact": "trial",
@@ -211,6 +221,15 @@
 | `detailed.budget_s` | 累计差上限，不含开战损耗 |
 | `detailed.state_checks` | 节点边界要核对的状态，例如切人类型、协奏、能量、角色资源 |
 
+### 测试容忍
+
+| 字段 | 约定 |
+|---|---|
+| `tolerances.zero_tolerance[]` | 实测触发即刻熔断的零容忍清单；默认自动导出 5 类：`entry_mismatch`（入场方式不符）、`node_mismatch`（节点链跳错或意外交还框架）、`fallback`（触发兜底分支）、`key_skill_fail`（定义性技能失败）、`runtime_fatal`（运行期严重异常）；自定义项填 `custom` |
+| `zero_tolerance[].id/scope/rule` | 稳定编号、生效范围（如 `all_nodes`、`acceptance.simple` 或指定节点 id）、可机读的判定规则 |
+| `zero_tolerance[].source` | `default` / `user` / `iteration`（单轮排查临时追加，解决后撤回） |
+| `tolerances.confirmed` | 是否已随 G2 向用户展示并确认（沿用默认、删减或追加自定义条件） |
+
 ## 3 关口 G2
 
 以下适用项全部通过，才能生成整队代码。
@@ -235,10 +254,11 @@
 - [ ] 所有判断、步骤、时间和缺项引用均能定位。
 - [ ] `acceptance` 已定稿，简单验收的来源、详细验收的区间和累计差上限可复查。
 - [ ] 累计差上限小于 1 s 时，用户已回答目标次数是否保留。
+- [ ] 零容忍清单（`tolerances`）已向用户展示并确认（沿用默认、删减或追加自定义条件）。
 
 检查结果写入 `notes.md`，并输出三张表：
 
-1. 节点 / 轴原文 / 视频区间 / 动作与触发判据 / 切人方式 / 下个节点。
+1. 节点 / 轴原文 / 视频区间 / 入场方式 / 动作与触发判据 / 切人方式 / 下个节点。
 2. 参考耗时表，按 timing.md 列各遍、口径和待测项。
 3. 验收目标表：技能 / 目标次数 / 来源 / 累计差上限。
 
