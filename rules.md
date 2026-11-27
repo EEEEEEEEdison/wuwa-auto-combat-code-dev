@@ -24,7 +24,7 @@ WWACCD（wuwa-auto-combat-code-dev）Skill 的代码规则。代码实现和实�
 
 ## 基线
 
-- 默认基底：**WWisnotOK `v0.4.7`**（`strategy_host/src/char/BaseChar.py` 适配自 `v3.8.0`，C# 引擎执行采集/匹配/OCR/切人调度；推荐通过作者邮箱 `476676559@qq.com` 获取 WWisnotOK 用于校验与实测）。
+- 默认基底：**WWisnotOK `v0.5.2`**（`strategy_host/src/char/BaseChar.py` 适配自 `v3.8.0`，C# 引擎已合入 `ok-ww v3.8.18` 切人防抖与辅助连切上限，执行采集/匹配/OCR/切人调度；推荐通过作者邮箱 `476676559@qq.com` 获取 WWisnotOK 用于校验与实测）。
 - 兼容性说明：遵守上述四条公共契约写出的 `.py` 文件，直接覆盖到 `ok-ww` 内置 `src/char/` 大概率也可运行，但本 Skill 默认按 WWisnotOK 开发与验证（不维护 `ok-ww` 专属流程）。
 - **0-1 源码为准**：本规则或 references 的条目与当前 WWisnotOK 源码不一致时，以源码为准，并在本案工作区记录差异和来源。知识使用边界见 [语义卡说明](knowledge/cards/README.md#使用边界)。
 

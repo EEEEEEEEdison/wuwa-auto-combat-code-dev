@@ -7,13 +7,15 @@
 
 | 项 | 要求 |
 |---|---|
-| WWisnotOK | 已安装或已构建（基线 `v0.4.7`），以 `WWisnotOK.exe --mcp`（或设置中开启 MCP）启动 |
+| WWisnotOK | 已安装或已构建（基线 `v0.5.2`），以 `WWisnotOK.exe --mcp`（或设置中开启 MCP）启动 |
 | 权限 | 游戏以管理员身份运行时，WWisnotOK 也必须以管理员身份运行 |
-| 宿主 | 已连接 WWisnotOK 本机 MCP（默认端口 `8766`，连接描述在 `%LOCALAPPDATA%\WWisnotOK\mcp\connection.json`，设了 `WWISNOTOK_DATA_DIR` 时在该目录的 `mcp\connection.json`） |
-| 游戏 | 简体中文、16:9 画面、分辨率不低于 1280×720，窗口不得最小化 |
+| 宿主 | 已连接 WWisnotOK 本机 MCP（端口从 `8766` 起动态分配，连接描述固定在 `%LOCALAPPDATA%\WWisnotOK\mcp\connection.json`，设了 `WWISNOTOK_DATA_DIR` 时在该目录的 `mcp\connection.json`） |
+| 数据目录 | 默认为 `<WWisnotOK 目录>/data`；自定义路径记在 `<WWisnotOK 目录>/data-location.json` 与 `%LOCALAPPDATA%\WWisnotOK\last-data.json`（`check_env.py` 会自动探测） |
+| 游戏 | 简体中文、16:9 画面、分辨率不低于 1280×720，窗口不得最小化（或已启用子会话模式） |
 | 本机路径 | 工作区 `wwaccd.local.md` 记录 WWisnotOK 目录、数据目录与内置 Python（`runtime/python/python.exe`） |
 
-GUI 和 MCP 共用同一个执行权：自动战斗、测试（`run_task`）、日常任务（`start_routine`）和策略重载（`reload_strategies`）不能同时运行。
+GUI 和 MCP 共用同一个执行权：自动战斗、测试（`run_task`）、日常/周期例程（`start_routine`）和策略重载（`reload_strategies`）不能同时运行。
+其他可用辅助工具包括 `pause_routine` / `resume_routine`、`focus_window`、`navigate`、`set_bridge_profiling` / `get_bridge_metrics`。
 客户端连接配置教程不在本指引范围内；WWisnotOK 官方接口细节以 `<WWisnotOK 目录>/docs/develop.md` 为准。
 
 ## 2 连接检查与内置指引
@@ -32,7 +34,7 @@ WWisnotOK 每支队伍支持内置代码（槽位 0）和 6 个导入位（槽�
 
 - **首次导入新 zip**：请用户在 WWisnotOK 的“队伍代码”页签点击导入并切换到对应导入位。
 - **修改已导入队伍的 `.py` 后复测**：在确认无任务占用执行权后调用 `reload_strategies()` 热重载；若有语法或导入错误，引擎会保留旧类并返回报错。
-- **核对代码生效**：每次 `run_task` 写入 `runs/<run_id>/strategy-versions.json`，每次决策追踪写入 `decision-traces/<时间-编号>/metadata.json`（含 `provenance.imported_strategies` 的 SHA-256）。核对其中对应 `<类名>.py` 的哈希前 16 位与本次候选包一致，不相等说明新代码未生效。
+- **核对代码生效**：每次 `run_task` 写入 `runs/<run_id>/strategy-versions.json`，每次决策追踪写入 `decision-traces/<时间-编号>/metadata.json`（含 `provenance.imported_strategies` 的 SHA-256）。**注意**：`start_routine` 运行目录不写 `strategy-versions.json`，跑例程时必须同步开启 `set_decision_tracing` 并传 `--trace` 才能核对导入哈希。核对对应 `<类名>.py` 的哈希前 16 位与本次候选包一致，不相等说明新代码未生效。
 
 ## 4 实测与采证方式
 
@@ -41,27 +43,32 @@ WWisnotOK 每支队伍支持内置代码（槽位 0）和 6 个导入位（槽�
 | 模板 / 接口 | 用途 | 是否发送输入 | 主要产物 |
 |---|---|---|---|
 | `templates/mcp/capture_probe.py`（经 `run_task`） | 只读检查画面分辨率、`in_team()` 和当前加载的角色类 | 否 | `runs/<run_id>/run.log`、`result.json`、`strategy-versions.json`、`last-frame.png` |
-| `templates/mcp/combat_probe.py`（经 `run_task`） | 用户在游戏内备好战斗场景，跑限定时长（默认 30 秒）的策略循环 | 是 | 同上；配合 `set_decision_tracing` 产出 `events.jsonl` 与关键帧 PNG |
-| `start_routine("matrix", config)` | 调用 WWisnotOK 内置终焉矩阵例程（支持 `RunMode: "Push"` 奇点扩张凹分） | 是 | 例程日志、进度与决策追踪目录 |
+| `templates/mcp/combat_probe.py`（经 `run_task`） | 用户在游戏内备好战斗场景，跑限定时长（默认 30 秒）的策略循环，支持按 `mcp_test.json.tolerances.expected_intro` 脚本内 0 延迟熔断 | 是 | 同上；配合 `set_decision_tracing` 产出 `events.jsonl` 与关键帧 PNG |
+| `start_routine(task, config)` | 调用 WWisnotOK 内置例程（`daily` / `echo` / `matrix` 终焉矩阵 / `wastes` 冥歌海墟）；终焉矩阵奇点扩张凹分键名**必须带空格**：`"Run Mode": "Push"`、`"Push Team"`、`"Push Preset"`、`"Push Buff"`、`"Push Target"`（必须 `> 0`）、`"Push Tries"`、`"Push Reached"`（`"Save"` 保存或 `"Stay"` 停在结算页） | 是 | `runs/routine-.../run.log`、`status.json` 与决策追踪目录 |
 
-### 标准采证流程
+### 标准采证与零容忍实时熔断流程
 
-1. 调用 `get_state()` 确认无占用，可选跑一次 `capture_probe.py` 确认画面和队伍识别正常。
-2. 调用 `set_decision_tracing(enabled=true, capture_frames=true)` 开启决策追踪。
-   - 追踪会异步写入 `<数据目录>/decision-traces/<时间-编号>/`（最多 50,000 条事件、64 张关键帧 PNG，不阻塞战斗）。
+1. 调用 `get_state()` 确认无占用，可选跑一次 `capture_probe.py` 确认画面和队伍识别正常；按 [iterate.md §1.3](../guides/iterate.md#13-测试容忍与即刻熔断) 准备好本轮零容忍清单。
+2. 调用 `set_decision_tracing(enabled=true, capture_frames=true)` 开启决策追踪（跑 `start_routine` 时**必开**，用于核对导入哈希和实时追踪切人）。
+   - 追踪异步写入 `<数据目录>/decision-traces/<时间-编号>/`（最多 50,000 条事件、64 张关键帧 PNG，不阻塞战斗）。
    - 记录返回的 `folder` / `trace_id`。
-3. 运行目标测试：
-   - **定向战斗测试**：由用户备好战斗场景后，用 `run_task(file_path=<combat_probe.py 绝对路径>, timeout_seconds=90, team=[...])` 启动，轮询 `get_run_status(run_id)` 至终态，再用 `get_run_artifacts(run_id)` 取产物路径。
-   - **已有自动战斗观察**：用 `set_automation_enabled(enabled=true)` 开启后，可用 `get_state()`、`get_logs()`、`get_decision_trace()` 增量观察，结束后关闭。
-   - **终焉矩阵测试**：向用户确认 `matrix_routine` 参数（槽位、预设、增益、目标与是否保留成绩）后，调用 `start_routine(task="matrix", config=...)`，轮询 `routine_status()` 至结束。
-4. 调用 `set_decision_tracing(enabled=false)` 结束记录并等待后台落盘完成。
-5. 运行报告脚本汇总并归档到工作区媒体目录：
+3. 运行目标测试并**运行期实时监控零容忍条件**：
+   - **定向战斗测试**：在 `mcp_test.json` 的 `tolerances.expected_intro` 填入关键节点的预期入场方式（如 `{"Lupa.s1": true}`），由用户备好战斗场景后用 `run_task(file_path=<combat_probe.py 绝对路径>, timeout_seconds=90, team=[...])` 启动。
+   - **已有自动战斗观察**：用 `set_automation_enabled(enabled=true)` 开启后增量观察。
+   - **终焉矩阵测试**：向用户确认 `matrix_routine` 参数（带空格键名、`Push Target > 0`、`Push Reached` 选 `Stay` 或 `Save`）后调用 `start_routine(task="matrix", config=...)`。
+   - **轮询与即刻熔断**：在轮询 `get_run_status(run_id)` / `routine_status()` 期间，同步增量调用 `get_logs()` 与 `get_decision_trace(after_sequence=...)` 检查本轮零容忍清单（节点 `enter ... has_intro=` 与模型不符、节点跳错/串轴、`WARNING` 级 `fallback:`、定义性技能 `cast fail`、`ERROR` / `interrupt` 及自定义/本轮临时项）。**一旦命中，不等本局跑完，立即打断**：
+     - `run_task` → 调 `stop_task(run_id)`；
+     - `start_routine` → 调 `stop_routine()`，**随后必须调 `set_automation_enabled(enabled=false)`**（原因：WWisnotOK 例程结束或停止后会自动重启自动战斗，不关会抢占后续重载与复测执行权）；
+     - 自动战斗观察 → 调 `set_automation_enabled(enabled=false)`。
+4. 若例程正常结束且接下来需要 `reload_strategies()` 或再跑 `run_task()`，同样先调 `set_automation_enabled(enabled=false)` 释放执行权。
+5. 调用 `set_decision_tracing(enabled=false)` 结束记录并等待后台落盘完成。
+6. 运行报告脚本汇总并归档到工作区媒体目录（`mcp_report.py` 同时支持 `run_task` ISO 日志与 `start_routine` 中文 `【信息】[Scope]` 日志）：
 
 ```text
-<WWisnotOK python.exe> -I -B scripts/mcp_report.py [<runs/<run_id> 目录>] [--trace <decision-traces/<编号> 目录>] [--out <工作区>/<队名>/media/mcp_reports/<编号>]
+<WWisnotOK python.exe> -I -B scripts/mcp_report.py [<runs/<run_id 或 routine-...> 目录>] [--trace <decision-traces/<编号> 目录>] [--out <工作区>/<队名>/media/mcp_reports/<编号>]
 ```
 
-说明：若团队使用带变轴/末轮的循环前缀（如 `S,C,Z`），追加 `--loop-prefixes S,C,Z`。
+说明：若团队使用带变轴/末轮的循环前缀（如 `S,C,Z`），追加 `--loop-prefixes S,C,Z`。命中零容忍熔断时，将报告交给 [iterate.md §1.3](../guides/iterate.md#13-测试容忍与即刻熔断) 决定快跑短局复现或直接进入诊断。
 
 ## 5 结果判读
 
@@ -81,7 +88,8 @@ WWisnotOK 每支队伍支持内置代码（槽位 0）和 6 个导入位（槽�
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `connection.json` 不存在或连不上 `127.0.0.1:8766` | WWisnotOK 未开启 MCP 或已重启换了端口/令牌 | 启动 `WWisnotOK.exe --mcp` 并重新读取 `connection.json` |
-| 工具报执行权被占用 | 自动战斗、例程或上一个 `run_task` 尚未结束 | 先 `stop_task` / `stop_routine` / `set_automation_enabled(false)`，等状态归闲 |
+| 工具报执行权被占用 | 自动战斗、例程或上一个 `run_task` 尚未结束；或 `start_routine` 结束/停止后自动重启了自动战斗 | 先 `stop_task` / `stop_routine`，再调用 `set_automation_enabled(false)`，等状态归闲 |
+| `start_routine("matrix")` 误跑开荒或报错“没有填达标分” | 配置键名漏空格（如写了 `RunMode` 而非 `"Run Mode"`），或 `"Push Target" <= 0` | 对照 `templates/mcp/mcp_test.json` 使用带空格键名、正数 `"Push Target"` 与 `"Save"`/`"Stay"` |
 | `reload_strategies` 失败 | 导入的 `.py` 存在语法、导入或继承错误 | 按返回的错误信息修正，先跑 `scripts/pack_team.py` 校验再重载 |
 | 画面采集失败或 `frame.json` 为 `unavailable` | 游戏窗口最小化，或 WWisnotOK 权限低于管理员运行的游戏 | 恢复游戏窗口；以管理员身份重启 WWisnotOK |
 | 导入哈希与候选 zip 不一致 | 未在 WWisnotOK 切换到新导入位，或未调用 `reload_strategies` | 在“队伍代码”页确认激活槽位并重载 |
@@ -90,5 +98,5 @@ WWisnotOK 每支队伍支持内置代码（槽位 0）和 6 个导入位（槽�
 
 ## 7 验证状态
 
-- 本指引与 `templates/mcp/`、`scripts/mcp_report.py` 已按 WWisnotOK `v0.4.7` 源码接口核对并完成离线模拟验证。
-- 实机端到端回归（`capture_probe.py`、`combat_probe.py`、`start_routine("matrix")` + `set_decision_tracing`）尚未在本版完成真机记录，首次真机实测后在此补记验证结果。
+- 本指引与 `templates/mcp/`、`scripts/mcp_report.py`、`scripts/check_env.py` 已按 WWisnotOK `v0.5.2` 源码接口核对并完成离线模拟验证。
+- 实机端到端回归（`capture_probe.py`、`combat_probe.py` 熔断、`start_routine("matrix")` + `set_decision_tracing`）尚未在本版完成真机记录，首次真机实测后在此补记验证结果。

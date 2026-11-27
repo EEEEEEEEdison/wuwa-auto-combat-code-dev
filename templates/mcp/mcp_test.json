@@ -10,13 +10,20 @@
     "duration_seconds": 30,
     "timeout_seconds": 90
   },
+  "tolerances": {
+    "fail_fast": true,
+    "expected_intro": {},
+    "stop_on_fallback": true,
+    "stop_on_error": true,
+    "custom_patterns": []
+  },
   "matrix_routine": {
-    "RunMode": "Push",
-    "PushTeam": 1,
-    "PushPreset": 1,
-    "PushBuff": 1,
-    "PushTarget": 0,
-    "PushTries": 1,
-    "PushReached": "KeepScore"
+    "Run Mode": "Push",
+    "Push Team": 1,
+    "Push Preset": 1,
+    "Push Buff": 1,
+    "Push Target": 5000,
+    "Push Tries": 1,
+    "Push Reached": "Stay"
   }
 }

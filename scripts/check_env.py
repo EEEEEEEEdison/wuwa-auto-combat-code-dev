@@ -109,16 +109,62 @@ def find_okww_working(explicit, local_entries, workspace):
     return None
 
 
-def probe_mcp(local_entries, ww_dir):
+def _read_json_path(json_file):
+    try:
+        if not json_file.is_file():
+            return None
+        data = json.loads(json_file.read_text(encoding='utf-8-sig'))
+        val = (data.get('path') or '').strip()
+        return str(Path(val).resolve()) if val else None
+    except Exception:
+        return None
+
+
+def find_data_dir(local_entries, ww_dir):
+    """按 WWisnotOK DataLocation.cs 规则定位实际数据目录。"""
+    candidates = []
+    env_dir = os.environ.get('WWISNOTOK_DATA_DIR')
+    if env_dir:
+        candidates.append(('env', Path(env_dir)))
+    for k, v in local_entries.items():
+        if '数据目录' in k and v and v != '无':
+            candidates.append(('local_config', Path(v.split('（')[0].strip())))
+    if ww_dir:
+        ptr = _read_json_path(Path(ww_dir) / 'data-location.json')
+        if ptr:
+            candidates.append(('data-location.json', Path(ptr)))
+    if os.environ.get('LOCALAPPDATA'):
+        last = _read_json_path(Path(os.environ['LOCALAPPDATA']) / 'WWisnotOK' / 'last-data.json')
+        if last:
+            candidates.append(('last-data.json', Path(last)))
+    if ww_dir:
+        candidates.append(('default', Path(ww_dir) / 'data'))
+    seen = set()
+    for source, cand in candidates:
+        try:
+            resolved = cand.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if (resolved / 'settings.json').is_file() or (source in ('env', 'data-location.json', 'last-data.json') and resolved.is_dir()):
+            return {'path': str(resolved), 'source': source}
+    return {'path': None, 'source': None}
+
+
+def probe_mcp(local_entries, ww_dir, data_dir=None):
     candidates = []
     env_dir = os.environ.get('WWISNOTOK_DATA_DIR')
     if env_dir:
         candidates.append(Path(env_dir) / 'mcp' / 'connection.json')
+    if os.environ.get('LOCALAPPDATA'):
+        candidates.append(Path(os.environ['LOCALAPPDATA']) / 'WWisnotOK' / 'mcp' / 'connection.json')
+    if data_dir:
+        candidates.append(Path(data_dir) / 'mcp' / 'connection.json')
     for k, v in local_entries.items():
         if '数据目录' in k and v and v != '无':
             candidates.append(Path(v.split('（')[0].strip()) / 'mcp' / 'connection.json')
-    if os.environ.get('LOCALAPPDATA'):
-        candidates.append(Path(os.environ['LOCALAPPDATA']) / 'WWisnotOK' / 'mcp' / 'connection.json')
     if ww_dir:
         candidates.append(Path(ww_dir) / 'data' / 'mcp' / 'connection.json')
 
@@ -221,7 +267,8 @@ def main():
 
     local_cfg = parse_local_config(args.workspace)
     ww_dir = find_wwisnotok_dir(args.wwisnotok, local_cfg['entries'], args.workspace)
-    mcp = probe_mcp(local_cfg['entries'], ww_dir)
+    data_info = find_data_dir(local_cfg['entries'], ww_dir)
+    mcp = probe_mcp(local_cfg['entries'], ww_dir, data_info['path'])
     py_info = probe_python_cv2(ww_dir, None)
     ffmpeg = shutil.which('ffmpeg')
     gh = probe_gh()
@@ -230,7 +277,11 @@ def main():
     report = {
         'workspace': str(Path(args.workspace).resolve()),
         'local_config': local_cfg,
-        'wwisnotok': {'found': bool(ww_dir), 'dir': ww_dir, 'contact_email': '476676559@qq.com'},
+        'wwisnotok': {
+            'found': bool(ww_dir), 'dir': ww_dir,
+            'data_dir': data_info['path'], 'data_dir_source': data_info['source'],
+            'contact_email': '476676559@qq.com',
+        },
         'mcp': mcp,
         'python': py_info,
         'ffmpeg': {'found': bool(ffmpeg), 'path': ffmpeg},
@@ -250,6 +301,8 @@ def main():
     ww_state = '已找到' if ww_dir else '未找到'
     ww_note = '支持工坊 zip（validate.py）、内置基线与可选 MCP' if ww_dir else '推荐获取 WWisnotOK 用于验证（联系作者邮箱 476676559@qq.com）；暂无本地目录时可走 --offline 打包'
     print(f'| WWisnotOK（推荐） | {ww_state} | `{ww_dir or "无"}` | {ww_note} |')
+    data_state = f'已定位（{data_info["source"]}）' if data_info['path'] else '未找到'
+    print(f'| WWisnotOK 数据目录 | {data_state} | `{data_info["path"] or "无"}` | 存放 settings.json、teams/、runs/ 与 decision-traces/ |')
 
     mcp_map = {'reachable': '已连通', 'stale_connection_file': '连接文件存在但端口未监听', 'not_running': '未运行', 'invalid_connection_file': '连接文件异常'}
     mcp_note = '支持半自动或自主 MCP 实测' if mcp['reachable'] else '推荐先走纯手动实测，或开启 WWisnotOK --mcp 后再启用 MCP'

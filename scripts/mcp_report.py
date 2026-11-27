@@ -17,12 +17,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# WWisnotOK TestRunner.cs 落盘格式：{Time:O} [{Level}] {Message}
+# WWisnotOK TestRunner.cs（run_task）落盘格式：{Time:O} [{Level}] {Message}
 WW_LINE_RE = re.compile(r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})) \[(\w+)\] (.*)$')
+# WWisnotOK RoutineRunner.cs（start_routine）落盘格式：2026-11-26 00:12:34,567【信息】[终焉矩阵 › 奇点扩张凹分] {Message}
+ROUTINE_LINE_RE = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})【(信息|警告|错误)】\[([^\]]*)\] (.*)$')
+CN_LEVEL_MAP = {'信息': 'INFO', '警告': 'WARN', '错误': 'ERROR'}
 # 角色循环轴行：支持中文角色名全角冒号（StrategyRuntime.WriteLog）和英文类名半角冒号
 CHAR_RE = re.compile(r'^([^\s:：]+)[:：]\s*\[(\w+)\]\s+(.*)$')
 ISSUE_RE = re.compile(
-    r': fail\b|^fallback\b|^interrupt\b|clicked liberation but no effect|not in team while switching'
+    r': fail\b|^fallback\b|^interrupt\b|tolerance_breach|clicked liberation but no effect|not in team while switching'
     r"|can't find next char|no_candidate_above_no_priority|not in combat|策略异常|连接已结束"
 )
 
@@ -33,18 +36,31 @@ def parse_iso_ts(text):
     return datetime.fromisoformat(normalized).timestamp()
 
 
+def parse_routine_ts(text):
+    return datetime.strptime(text, '%Y-%m-%d %H:%M:%S,%f').timestamp()
+
+
 def parse_run_log(log_path):
     rows = []
     if not log_path or not log_path.is_file():
         return rows
     for raw in log_path.read_text(encoding='utf-8', errors='replace').splitlines():
         m = WW_LINE_RE.match(raw)
-        if not m:
-            if rows:
-                rows[-1]['extra'].append(raw)
+        if m:
+            ts = parse_iso_ts(m.group(1))
+            rows.append({'ts': ts, 'iso': m.group(1), 'level': m.group(2).upper(), 'msg': m.group(3), 'extra': []})
             continue
-        ts = parse_iso_ts(m.group(1))
-        rows.append({'ts': ts, 'iso': m.group(1), 'level': m.group(2).upper(), 'msg': m.group(3), 'extra': []})
+        rm = ROUTINE_LINE_RE.match(raw)
+        if rm:
+            ts = parse_routine_ts(rm.group(1))
+            rows.append({
+                'ts': ts, 'iso': rm.group(1),
+                'level': CN_LEVEL_MAP.get(rm.group(2), 'INFO'),
+                'scope': rm.group(3), 'msg': rm.group(4), 'extra': [],
+            })
+            continue
+        if rows:
+            rows[-1]['extra'].append(raw)
     return rows
 
 

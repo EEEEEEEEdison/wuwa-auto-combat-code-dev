@@ -2,7 +2,7 @@
 
 **基线**
 
-- WWisnotOK `v0.4.7`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`，通用方法通过 `self.task._char_call(...)` 交由 C# 引擎执行）。
+- WWisnotOK `v0.5.2`：`strategy_host/src/char/BaseChar.py`（适配自 `v3.8.0`，通用方法通过 `self.task._char_call(...)` 交由 C# 引擎执行）。
 - 下文旧版方法行号仅作历史定位参考，实际行为以当前 WWisnotOK `strategy_host/src/char/BaseChar.py` 与 `src/WWisnotOK/Core/` 源码为准（0-1）。
 
 **调用频次**

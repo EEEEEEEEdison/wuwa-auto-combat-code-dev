@@ -20,10 +20,11 @@ description: WWACCD 的 WWisnotOK MCP 实测 Skill：连接 WWisnotOK 本机 MCP
 
 1. 读取 [总入口](../../SKILL.md) 和 [MCP 实测操作指引](../../references/mcp-testing.md)。
 2. 按指引 §2 检查 WWisnotOK MCP 连接（`get_capabilities`、`get_state`），读取内置 `get_skill("develop")`。
-3. 确认待测代码已导入且已生效：首次导入 zip 由用户在 WWisnotOK “队伍代码”页完成；修改已导入队伍的 `.py` 后，调用 `reload_strategies` 热重载并核对代码哈希。
-4. 按指引 §3–4 开启 `set_decision_tracing(enabled=true, capture_frames=true)`，根据测试范围执行 `start_routine("matrix", config)`、`set_automation_enabled` 或 `run_task`（可复制 `templates/mcp/` 下的 `capture_probe.py` / `combat_probe.py` 到 `<工作区>/<队名>/media/mcp/`）。
-5. 结束后关闭 `set_decision_tracing(enabled=false)`，用 `scripts/mcp_report.py` 汇总 `runs/<run_id>/` 与 `decision-traces/<时间-编号>/`，并归档到 `<工作区>/<队名>/media/`。
-6. 按指引 §5 判读报告，交给 [实测迭代](../iteration/SKILL.md)。
+3. 确认待测代码已导入且已生效：首次导入 zip 由用户在 WWisnotOK “队伍代码”页完成；修改已导入队伍的 `.py` 后，先确认无占用（例程结束或停止后须先 `set_automation_enabled(false)`），再调用 `reload_strategies` 热重载并核对代码哈希。
+4. 按指引 §3–4 开启 `set_decision_tracing(enabled=true, capture_frames=true)`（跑 `start_routine` 时必开，用于核对导入哈希），根据测试范围执行 `start_routine("matrix", config)`（键名须带空格、`Push Target > 0`）、`set_automation_enabled` 或 `run_task`（复制 `templates/mcp/` 到 `<工作区>/<队名>/media/mcp/`，并按本轮零容忍清单填好 `mcp_test.json.tolerances`）。
+5. **运行期零容忍监控与即刻熔断**：轮询状态期间同步增量检查 `get_logs()` 与 `get_decision_trace(after_sequence=...)`；命中零容忍清单时立即调 `stop_task` / `stop_routine`（随后补 `set_automation_enabled(false)`）或 `set_automation_enabled(false)` 打断本局，不等跑完。
+6. 结束后关闭 `set_decision_tracing(enabled=false)`，用 `scripts/mcp_report.py` 汇总 `runs/<run_id 或 routine-...>/` 与 `decision-traces/<时间-编号>/`，并归档到 `<工作区>/<队名>/media/`。
+7. 按指引 §5 判读报告，交给 [实测迭代](../iteration/SKILL.md)（命中熔断时按 iterate.md §1.3 分流复现或排查）。
 
 ## 使用边界
 
