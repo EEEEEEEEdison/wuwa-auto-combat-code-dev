@@ -56,7 +56,7 @@ WWACCD（wuwa-auto-combat-code-dev）Skill 的代码规则。代码实现和实�
 
 ### 1 放技能
 
-- **1-1** 放 E、R、声骸默认用 `click_resonance` / `click_liberation` / `click_echo`。只有当它们的等待、超时或返回值判定明确不合适时，才改用 `send_*_key`，并在注释里写明原因。
+- **1-1** 放 E、R、声骸按动作的按法、触发和完成信号，从 [step2.md §3](guides/step2.md) 与 [references/basechar-api.md](references/basechar-api.md) 列出的可用函数（`click_*`、`send_*_key`、`wait_until` 配合 `send_*_key`、`send_key` / `send_key_down`）中自行选用最匹配的实现，不设固定优先级；使用无内置确认的底层发键时，按 1-3 和 5-3 明确确认信号与计时记录。
 - **1-2** 技能键一律经 `send_*_key()` 或 `self.get_*_key()` 发送，不写死 `'e'/'q'/'r'`（用户可能改过键位）。长按写成 `self.task.send_key(self.get_resonance_key(), down_time=秒数)`。
 - **1-3** 用 `send_*_key` 手动放技能后，如果后续要用 `last_res` / `last_liberation` / `last_echo` 计时，必须调用对应的 `record_*_use()`。记录时机优先放在确认技能生效之后；确认不了才在按键时记录，并在注释里说明。
 - **1-4** E 可能一直亮着时（强化 E、多段 E、识别不稳），`click_resonance` 必须传正数 `time_out`。注意它的 `time_out=0` 表示默认 15 秒，和 `click_echo(time_out=0)`（只按一次）意思相反。

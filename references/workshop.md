@@ -266,7 +266,7 @@ class Alpha(BaseChar):
             self._trace(mode, 'interrupt', reason='unknown_mode', next='framework')
             return self.switch_next_char()
         self._node = mode
-        self._trace(mode, 'enter', mode=entry)
+        self._trace(mode, 'enter', mode=entry, has_intro=bool(self.has_intro))
         return func()
 
     # ---------------- 日志 ----------------
@@ -320,7 +320,7 @@ class Alpha(BaseChar):
 - logger 包装从 `__init__` 赋值改为类上的 property。原版的写法会被 CharFactory 覆盖，实际没有生效（第 1 节“实例替换”）；
 - 交场时不再读协奏（6-7）；
 - `exit` 行由动作体用 `nxt` 输出；`_force_switch_to` 只在找不到队友时打 `fallback`；
-- 自然入场的 enter 行带 `mode=intro|natural`，强切入场带 `mode=forced`。
+- 自然入场的 enter 行带 `mode=intro|natural`，强切入场带 `mode=forced`，统一附带 `has_intro=True|False` 供日志与零容忍监控核对入场方式。
 
 ## 8. 交场链自检
 

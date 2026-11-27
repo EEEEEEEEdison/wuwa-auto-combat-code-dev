@@ -279,7 +279,7 @@ send_liberation_key(after_sleep=0, interval=-1, down_time=0.01)
 
 规则：
 
-- 1-1：只有 `click_*` 明确不合适时才用，并写注释说明原因。
+- 1-1：按动作语义从 `click_*`、`send_*_key`、`wait_until` + `send_*_key` 或 `send_key` / `send_key_down` 中自行选用，不设固定优先级；使用无内置确认的发键时按 1-3 和 5-3 明确确认信号与计时记录。
 - 1-2：长按用 `self.task.send_key(self.get_resonance_key(), down_time=秒)`，见 `Chisa.py:90`。
 - 1-3：需要计时就调用 `record_*_use()`，并且放在确认之后。
 - 1-8：不要传 `interval`，否则可能被节流静默丢弃。

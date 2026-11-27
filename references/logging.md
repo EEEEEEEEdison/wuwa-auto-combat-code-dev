@@ -72,12 +72,12 @@
 
 ## L-3 必打时机
 
-1. **`enter`**：每次进入本角色逻辑时打一条，带入场方式。`mode` 按以下优先级取值：
+1. **`enter`**：每次进入本角色逻辑时打一条，带入场方式与实际变奏状态 `has_intro`。`mode` 按以下优先级取值：
    1. `forced`：被循环轴 `_force_switch_to` 指定入场；
    2. `intro`：`has_intro` 为真；
    3. `natural`：其余情况。
 
-   强切时是否带变奏，可以从紧挨着的框架行 `switch_next_char … has_intro …` 里看到。
+   循环轴的 `enter` 行必须同时输出 `has_intro=bool(self.has_intro)`（读已有内存属性，不触发额外读屏，符合 L-8），供日志与 MCP 零容忍监控直接核对入场方式。
 2. **`decide`**：每个有分支的决策点，写选了哪支，以及决定该分支的状态值。
 3. **`cast X: ok|fail`**：每次技能尝试的结果。失败时带 `reason` 和当时已有的关键状态。
 4. **`fallback`**：兜底分支被触发时打。
@@ -121,6 +121,7 @@
 | 字段 | 类型 | 含义（来源） |
 |---|---|---|
 | `mode` | str | 入场方式 `intro`、`natural`、`forced`；循环轴中是节点 mode |
+| `has_intro` | bool | 本次上场是否带变奏入场（读已有属性 `self.has_intro`，不触发额外读屏，符合 L-8） |
 | `next` | str | 下一个上场的人：类名，可以带 `.mode`；交给框架时写 `framework` |
 | `con` | ratio | 协奏（`get_current_con()`，**只用判断时已读到的值**，见 L-8） |
 | `con_full` | bool | `is_con_full()` |
@@ -250,7 +251,7 @@ class Example(BaseChar):
 用法：
 
 ```python
-self._trace('f1', 'enter', mode='forced')
+self._trace('f1', 'enter', mode='forced', has_intro=bool(self.has_intro))
 self._trace('f1', 'cast R', ok=False, reason='no_animation', lib_ready=lib_ready, in_team=in_team)
 self._trace('f1', 'exit', reason='done', next='Phrolova.f1')
 self._trace(None, 'decide: liberate', lib_ready=True)
@@ -265,12 +266,12 @@ getattr(self, '_raw_logger', self.logger).warning('[F1] fallback: switch_without
 ### 实机效果示例（循环轴 `runs/<run_id>/run.log`）
 
 ```text
-2026-11-26T00:12:34.1200000+08:00 [INFO] 坎特蕾拉：[F1] enter mode=forced
+2026-11-26T00:12:34.1200000+08:00 [INFO] 坎特蕾拉：[F1] enter mode=forced has_intro=False
 2026-11-26T00:12:34.5800000+08:00 [INFO] 坎特蕾拉：[F1] cast E: ok
 2026-11-26T00:12:35.9100000+08:00 [INFO] 坎特蕾拉：[F1] cast R: fail reason=no_animation lib_ready=False in_team=True
 2026-11-26T00:12:35.9150000+08:00 [WARNING] 坎特蕾拉：[F1] fallback: switch_without_r
 2026-11-26T00:12:35.9200000+08:00 [INFO] 坎特蕾拉：[F1] exit reason=done next=Phrolova.f1
-2026-11-26T00:12:36.2100000+08:00 [INFO] 弗洛洛：[F1] enter mode=forced
+2026-11-26T00:12:36.2100000+08:00 [INFO] 弗洛洛：[F1] enter mode=forced has_intro=True
 ```
 
 ## L-11 取证行（probe）
