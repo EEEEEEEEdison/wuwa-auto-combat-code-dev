@@ -54,17 +54,17 @@ self._force_switch_to(self._find_teammate('<下一个类名>'), '<下个节点�
 | Z 重击 | `heavy_attack(duration=0.6)` | 固定时长按住左键（异常中断时中间 `sleep` 可能跳过 `mouse_up`） |
 | Z 重击 | `self.task.mouse_down()` / `self.task.mouse_up()` | 手写按住左键，配合 `sleep` 或 `wait_until` 按任意时长/条件松开；必须放进 `try/finally` 释放 |
 | 闪避 | `self.task.send_key(self.task.key_config.get('Dodge Key'))` / `continues_right_click(duration, interval=0.1, direction_key=None)` | 单次闪避或持续右键闪避（`continues_right_click` 不做战斗检查） |
-| 跳跃 | `self.task.jump()` | 按用户配置的跳跃键起跳 |
+| 跳跃 / 通用键 / 锁敌 | `self.task.jump()` / `continues_click(key, duration, interval=0.1)` / `self.task.middle_click_relative(x, y, ...)` | 按配置键跳跃；持续发任意配置键（不做战斗检查）；中键锁定目标 |
 
 ### 触发、状态判断与等待可用函数
 
 | 类别 | 可用函数 | 行为与边界 |
 |---|---|---|
 | 条件等待 | `self.task.wait_until(condition, time_out=<正数>, pre_action=..., post_action=..., settle_time=...)` | 每轮抓新帧并判 `condition`；`time_out` 超过 1 秒传 `pre_action=self.check_combat`；防单帧闪烁传 `settle_time` |
-| 定时等待 | `self.sleep(sec, check_combat=True)` | 按真实时间等待并按间隔做战斗检查；不得使用 `time.sleep()` |
+| 定时等待 / 抓帧 | `self.sleep(sec, check_combat=True)` / `self.task.next_frame()` | `sleep` 按真实时间等待并做战斗检查（不得使用 `time.sleep()`）；手写轮询循环每轮须调 `sleep` 或 `next_frame()` |
 | 入场/落地等待 | `self.wait_down(click=True)` / `self.wait_intro(time_out=1.2, click=True)` | `wait_down` 等入场动作结束或落地；`wait_intro` 在 `has_intro` 为真时等 E 或 R 可用 |
-| 计时 | `self.time_elapsed_accounting_for_freeze(anchor, intro_motion_freeze=False)` / `time.time() - start` | 前者用于扣冻结的游戏内时长（buff/CD），后者用于循环真实时间上限 |
-| 技能与资源判断 | `resonance_available()`、`echo_available()`、`liberation_available()`、`current_resonance()` / `current_echo()` / `current_liberation()`、`has_cd(box)`、`is_con_full()`、`get_current_con()`、`is_forte_full()` / `is_mouse_forte_full()` / `is_e_forte_full()`、`self.task.in_team()`、`self.flying()` | `resonance_available`/`echo_available` 只看 CD 数字，判图标亮需配 `current_*() > 0`；`get_current_con()` 会写入粘滞缓存 `current_con`，只判满槽用 `is_con_full()` |
+| 计时与演出冻结 | `self.time_elapsed_accounting_for_freeze(anchor, intro_motion_freeze=False)`、`add_freeze_duration(start, duration=-1.0, freeze_time=0.1)`、`self.task.in_liberation`、`time.time() - start` | 扣冻结的游戏内时长用前者，手写演出等待后用 `add_freeze_duration` 记账并成对置位/复位 `in_liberation`；循环真实时间上限用 `time.time() - start` |
+| 技能与资源判断 | `resonance_available()`、`echo_available()`、`liberation_available()`、`extra_action_available()`、`available(box, check_color=True, check_cd=True)`、`current_resonance()` / `current_echo()` / `current_liberation()`、`has_cd(box)`、`is_con_full()`、`get_current_con()`、`is_forte_full()` / `is_mouse_forte_full()` / `is_e_forte_full()`、`self.task.in_team()`、`self.flying()` / `flying_based_on_resonance()`、`has_long_action()` / `has_long_action2()` / `has_short_action()`、`check_outro()`、`is_first_engage()` | `resonance_available`/`echo_available` 只看 CD 数字，判图标亮需配 `current_*() > 0`；`get_current_con()` 会写入粘滞缓存 `current_con`，只判满槽用 `is_con_full()` |
 
 - `ready` 触发：满足可用判据即执行，不加保险等待。
 - `state` 触发：等明确的状态变化后执行。
@@ -83,6 +83,7 @@ self._force_switch_to(self._find_teammate('<下一个类名>'), '<下个节点�
 | `get_switch_priority(current_char, has_intro, target_low_con)` | 普通队伍在目标角色上覆写以决定切人优先级；不在场时调用，只读时间戳、已存状态与 `*_available()` |
 | `need_fast_perform()` | 检查是否有非在场队友不带 intro 即返回 `MUST`，放在可跳过动作前决定是否提前切人 |
 | `wait_switch()` | 在目标角色上覆写以延后被切入；必须自带超时且只读时间戳和已存状态 |
+| `self.wait_switch_cd()` | 距本次上场不足 1 秒时普攻补足剩余时间（`normal_attack_until_can_switch()` 为忙等反例，不宜使用） |
 | `self.task._target_has_switch_cd(target)` | 配合 `wait_until` 等待目标切人冷却结束再切（rules.md 3-12） |
 | `self.f_break(check_f_on_switch=..., force=...)` | 控制切人前/后或节点内是否触发击破演出（rules.md 3-9、3-10） |
 | `self.switch_other_char()` | 仅在 `on_combat_end` 中使用，战斗中不得调用 |
