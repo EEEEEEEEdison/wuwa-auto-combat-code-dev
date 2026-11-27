@@ -10,7 +10,7 @@
 [总入口 SKILL.md](SKILL.md) 按任务、G0 环境确认和已有产物选择阶段。
 各阶段共用证据、代码、时间测量和验收规则。
 已有确认仍适用时，直接沿用；缺少前提时，返回对应阶段补齐。
-版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.2.0`。各版本的变化见 [版本记录](#版本记录)。
+版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.3.0`。各版本的变化见 [版本记录](#版本记录)。
 普通开发只读取随版本提供的知识；知识维护由独立入口处理。
 
 ## 准备
@@ -26,12 +26,12 @@
 ## 安装
 
 GitHub 的正式版本标签固定指向对应提交。
-例如，“安装 1.2.0 版本”表示安装 `v1.2.0` 标签的内容。
+例如，“安装 1.3.0 版本”表示安装 `v1.3.0` 标签的内容。
 安装不依赖专用 zip，不能用默认分支代替指定版本。
 
 可向 Agent 提出：
 
-> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.2.0。
+> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.3.0。
 > 按该标签的 README 安装，并核对版本、加载路径和重复副本。
 
 安装目录名必须为 `wwaccd`，与总入口的 `name` 一致。
@@ -40,10 +40,10 @@ GitHub 的正式版本标签固定指向对应提交。
 
 ```sh
 # Claude Code
-git clone --branch v1.2.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
+git clone --branch v1.3.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
 
 # pi
-git clone --branch v1.2.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
+git clone --branch v1.3.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
 ```
 
 其他宿主克隆到宿主的 Skill 目录，目录名同样用 `wwaccd`。
@@ -100,8 +100,8 @@ pi 扫描到含 `SKILL.md` 的目录后便停止递归。
 目录名已是 `wwaccd` 且为干净的 Git 仓库时，在实际仓库中切换版本：
 
 ```sh
-git fetch origin tag v1.2.0 --no-tags
-git switch --detach v1.2.0
+git fetch origin tag v1.3.0 --no-tags
+git switch --detach v1.3.0
 ```
 
 也可通过内置半自动更新脚本检查与切换（仅在工作树干净且为标签安装时执行，不会覆盖未提交改动或开发分支）：
@@ -113,8 +113,8 @@ python -I -B scripts/update_skill.py --apply
 
 安装后核对：
 
-- `HEAD` 与 `refs/tags/v1.2.0^{commit}` 指向同一提交；
-- 实际安装目录中的 `VERSION` 为 `1.2.0`；
+- `HEAD` 与 `refs/tags/v1.3.0^{commit}` 指向同一提交；
+- 实际安装目录中的 `VERSION` 为 `1.3.0`；
 - `git status --porcelain --untracked-files=all` 没有输出；
 - 宿主加载的是该安装目录，不存在同名或旧名副本。
 
@@ -345,7 +345,7 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 现有 API 与实现引用基于：
 
-- WWisnotOK `v0.4.7`（`strategy_host` 策略接口适配自 `v3.8.0`，通用采集/匹配/OCR/冷却/协奏/切人调度由 C# 引擎执行；获取 WWisnotOK 请联系作者邮箱 `476676559@qq.com`）；
+- WWisnotOK `v0.5.2`（`strategy_host` 策略接口适配自 `v3.8.0`，C# 引擎已合入 `ok-ww v3.8.18` 切人防抖与辅助连切上限，通用采集/匹配/OCR/冷却/协奏/切人调度由 C# 引擎执行；获取 WWisnotOK 请联系作者邮箱 `476676559@qq.com`）；
 - 内置 Python `3.12`（含 `cv2`）。
 
 实际开发必须核对当前 WWisnotOK 源码与所用版本。
@@ -353,6 +353,12 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 ## 版本记录
 
+- 1.3.0：
+  - **多模态视频能力适配与素材获取交互**：G0 按任务类型与 Agent 原生视频/音频读取能力筛选 `cv2`、`ffmpeg` 安装询问；B 站链接改为探测后交互由用户决定清晰度（公开清晰度 / 自供本地高清 / 明确授权后调用本机工具读浏览器登录态下载且凭据不落盘）；`step1.md §4` 区分多模态视频直读、抽帧看图与无法逐帧采样三路径，明确要求告知用户大模型直读视频的实际采样帧率远低于一般视频帧率（30fps / 60fps）。
+  - **入场方式优先确认与全链路测试容忍熔断**：`rotation` 阶段将每个节点入场方式（首人/变奏/普通）设为最高优先项、降低模糊提问阈值并强制逐节点汇报；`timeline.json` 新增 `tolerances` 零容忍清单（默认 5 类 + G2 用户确认 + `iteration` 每轮动态加严），G2 汇总表补“入场方式”列；`logging.md` 与 `workshop.md` 在 `enter` 行补 `has_intro`；`mcp` 实测与 `combat_probe.py` 支持运行期实时监控与即刻熔断，`iterate.md §1.3` 明确熔断后复现与诊断分流。
+  - **代码实现函数全量平铺**：`step2.md §3` 与 `rules.md 1-1` 取消 `click_*` 固定优先级约束，对照 WWisnotOK 最新 `BaseChar.py` / `bridge.py` 完整列出技能与按键、触发等待与切人公开函数及副作用边界，由 Agent 按动作语义自行选用。
+  - **适配 WWisnotOK `v0.5.2`**：修正 `templates/mcp/mcp_test.json` 终焉矩阵带空格键名与 `"Save"`/`"Stay"` 枚举；`scripts/mcp_report.py` 兼容 `run_task` ISO 与 `start_routine` 中文 `【信息】[Scope]` 双格式日志；`scripts/check_env.py` 自动按 `data-location.json` / `last-data.json` 定位数据目录；`mcp-testing.md` 补齐例程结束/停止后须先 `set_automation_enabled(false)` 与必须开启决策追踪核对导入哈希。
+  - **重构知识提议（`proposal`）深度提取**：新增卡面缺口扫描（Card Gap Audit）、5 源全量盘点、A/B 两档分级呈现与薄弱卡零产出反查，解决空白/薄弱角色卡知识提议产出过少的问题。
 - 1.2.0：
   - 新增半自动询问式更新脚本 `scripts/update_skill.py`（优先 `git ls-remote` 检查最新标签，24 小时节流缓存放在系统临时目录，用户同意前不执行更新，自动拒绝覆盖脏目录、开发分支或非 Git 目录），并接入 `scripts/check_env.py --check-update` 与 `SKILL.md` 更新规范。
   - 在 `SKILL.md` 与 `rules.md` 明确写入四条代码写作原则（面向公共 `BaseChar` 契约不绑宿主私有实现、证据驱动等待、自包含颜色识别、自描述日志与交场链）；明确默认面向 WWisnotOK 开发并推荐联系作者获取用于验证，同时附注遵守公共契约的代码在 ok-ww 上大概率也可运行。
