@@ -10,7 +10,7 @@
 [总入口 SKILL.md](SKILL.md) 按任务、G0 环境确认和已有产物选择阶段。
 各阶段共用证据、代码、时间测量和验收规则。
 已有确认仍适用时，直接沿用；缺少前提时，返回对应阶段补齐。
-版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.3.0`。各版本的变化见 [版本记录](#版本记录)。
+版本号见 [VERSION](VERSION)。指定版本通过 `v<版本号>` 标签安装，例如 `v1.3.1`。各版本的变化见 [版本记录](#版本记录)。
 普通开发只读取随版本提供的知识；知识维护由独立入口处理。
 
 ## 准备
@@ -26,12 +26,12 @@
 ## 安装
 
 GitHub 的正式版本标签固定指向对应提交。
-例如，“安装 1.3.0 版本”表示安装 `v1.3.0` 标签的内容。
+例如，“安装 1.3.1 版本”表示安装 `v1.3.1` 标签的内容。
 安装不依赖专用 zip，不能用默认分支代替指定版本。
 
 可向 Agent 提出：
 
-> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.3.0。
+> 安装 EEEEEEEEdison/wuwa-auto-combat-code-dev 的 v1.3.1。
 > 按该标签的 README 安装，并核对版本、加载路径和重复副本。
 
 安装目录名必须为 `wwaccd`，与总入口的 `name` 一致。
@@ -40,10 +40,10 @@ GitHub 的正式版本标签固定指向对应提交。
 
 ```sh
 # Claude Code
-git clone --branch v1.3.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
+git clone --branch v1.3.1 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.claude/skills/wwaccd"
 
 # pi
-git clone --branch v1.3.0 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
+git clone --branch v1.3.1 --depth 1 https://github.com/EEEEEEEEdison/wuwa-auto-combat-code-dev.git "$HOME/.pi/agent/skills/wwaccd"
 ```
 
 其他宿主克隆到宿主的 Skill 目录，目录名同样用 `wwaccd`。
@@ -100,8 +100,8 @@ pi 扫描到含 `SKILL.md` 的目录后便停止递归。
 目录名已是 `wwaccd` 且为干净的 Git 仓库时，在实际仓库中切换版本：
 
 ```sh
-git fetch origin tag v1.3.0 --no-tags
-git switch --detach v1.3.0
+git fetch origin tag v1.3.1 --no-tags
+git switch --detach v1.3.1
 ```
 
 也可通过内置半自动更新脚本检查与切换（仅在工作树干净且为标签安装时执行，不会覆盖未提交改动或开发分支）：
@@ -113,8 +113,8 @@ python -I -B scripts/update_skill.py --apply
 
 安装后核对：
 
-- `HEAD` 与 `refs/tags/v1.3.0^{commit}` 指向同一提交；
-- 实际安装目录中的 `VERSION` 为 `1.3.0`；
+- `HEAD` 与 `refs/tags/v1.3.1^{commit}` 指向同一提交；
+- 实际安装目录中的 `VERSION` 为 `1.3.1`；
 - `git status --porcelain --untracked-files=all` 没有输出；
 - 宿主加载的是该安装目录，不存在同名或旧名副本。
 
@@ -353,6 +353,8 @@ G2 检查模型、动作判据、切人、依赖、参考耗时和开放缺项�
 
 ## 版本记录
 
+- 1.3.1：
+  - 升级 `SKILL.md` 的**提问与会话推进**规范：明确要求在所有决策、阶段放行、歧义拍板（入场方式、零容忍清单、熔断分流、步步确认改法）和风险授权节点优先使用宿主结构化提问工具（`ask`），先在正文给出对照表/证据/最小改法再弹窗拍板，每题推荐项置顶并说明后果，按 G0 审批粒度与自主授权边界控制提问频率；并在 `step1.md`、`timeline.md`、`iterate.md` 补齐对应指向。
 - 1.3.0：
   - **多模态视频能力适配与素材获取交互**：G0 按任务类型与 Agent 原生视频/音频读取能力筛选 `cv2`、`ffmpeg` 安装询问；B 站链接改为探测后交互由用户决定清晰度（公开清晰度 / 自供本地高清 / 明确授权后调用本机工具读浏览器登录态下载且凭据不落盘）；`step1.md §4` 区分多模态视频直读、抽帧看图与无法逐帧采样三路径，明确要求告知用户大模型直读视频的实际采样帧率远低于一般视频帧率（30fps / 60fps）。
   - **入场方式优先确认与全链路测试容忍熔断**：`rotation` 阶段将每个节点入场方式（首人/变奏/普通）设为最高优先项、降低模糊提问阈值并强制逐节点汇报；`timeline.json` 新增 `tolerances` 零容忍清单（默认 5 类 + G2 用户确认 + `iteration` 每轮动态加严），G2 汇总表补“入场方式”列；`logging.md` 与 `workshop.md` 在 `enter` 行补 `has_intro`；`mcp` 实测与 `combat_probe.py` 支持运行期实时监控与即刻熔断，`iterate.md §1.3` 明确熔断后复现与诊断分流。
